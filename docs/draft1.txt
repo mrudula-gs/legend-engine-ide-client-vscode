@@ -1,0 +1,1812 @@
+###Lakehouse
+Ingest repro::ingest::WORKER_DATA BatchMilestoned Snapshot<AVRO> owner=AppDir(production='287353', prodParallel='273574') group=REPRO_WORKER_DATA
+[
+   PERF_RATING(
+      _id: Varchar(16777216)[1],
+      year: Int,
+      annual_rating: Varchar(16777216),
+      summer_rating: Varchar(16777216)
+   )
+   DP30
+   pk=[_id]
+   partition=[_id]
+   preprocessors=[
+      IncludeInZOutZTimestamp
+   ];
+
+   ORG_HOME(
+      _id: Varchar(16777216)[1],
+      from_date: Date[1],
+      to_date: Date,
+      location: Varchar(16777216),
+      division_code: Varchar(16777216)
+   )
+   DP30
+   pk=[_id, from_date]
+   partition=[_id]
+   preprocessors=[
+      IncludeInZOutZTimestamp
+   ];
+]
+
+
+
+###DataProduct
+DataProduct repro::dp::GTE_REPRO2
+{
+  title: 'GTE_REPRO'
+  description: 'Reproduction of UNION pattern via concatenate'
+  accessPoints: [
+       REPRO_AP_GROUP 'REPRO_AP_GROUP' ('REPRO_AP_GROUP')
+       [
+           PLUG_CHECK_INLINE 'PLUG_CHECK_INLINE' ('fully inlined plug check with UNION'): LH(Snowflake, |
+           
+#I{repro::ingest::WORKER_DATA.PERF_RATING}#->project(
+  ~[
+     _id: x|$x._id,
+     year: x|now()->adjust(
+    1,
+    DurationUnit.YEARS
+  )->year()
+   ]
+)->project(
+  ~[
+     _id: y|$y._id,
+     year: y|$y.year
+   ]
+)->cast(@meta::pure::metamodel::relation::Relation<(_id:Varchar(16777216)[1], year:Integer[1])>)->project(
+  ~[
+     worker_id: x|$x._id,
+     ratings_year: x|$x.year->toOne()
+   ]
+)->join(
+  #I{repro::ingest::WORKER_DATA.PERF_RATING}#->project(
+    ~[
+       _id: x|$x._id,
+       year: x|now()->adjust(
+      1,
+      DurationUnit.YEARS
+    )->year()
+     ]
+  )->project(
+    ~[
+       _id: y|$y._id,
+       year: y|$y.year
+     ]
+  )->distinct()->cast(@meta::pure::metamodel::relation::Relation<(_id:Varchar(16777216)[1], year:Integer[1])>)->project(
+    ~[
+       worker_id2: y|$y._id,
+       year: y|$y.year
+     ]
+  ),
+  JoinKind.LEFT,
+  {r1, r2|(($r1.worker_id == $r2.worker_id2) && ($r2.year <= $r1.ratings_year)) && ($r2.year >= $r1.ratings_year + 4)  }
+
+
+)
+           )
+           
+           DP00
+       ]
+  ]
+}
+
+
+
+'Implementation Type Decided VIEW.
+''Implementation Type Decided VIEW.
+''Start generating VIEW for
+   Function: |RelationElementAccessor(IngestRelationAccessor)->meta::pure::functions::relation::project(~[_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|$x._id,year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|meta::pure::functions::date::now()->meta::pure::functions::date::adjust(1, meta::pure::functions::date::DurationUnit.YEARS)->meta::pure::functions::date::year()])->meta::pure::functions::relation::project(~[_id:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year])->meta::pure::functions::lang::cast(@meta::pure::metamodel::relation::Relation<(_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])>)->meta::pure::functions::relation::project(~[worker_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$x._id,ratings_year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$x.year->meta::pure::functions::multiplicity::toOne()])->meta::pure::functions::relation::join(RelationElementAccessor(IngestRelationAccessor)->meta::pure::functions::relation::project(~[_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|$x._id,year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|meta::pure::functions::date::now()->meta::pure::functions::date::adjust(1, meta::pure::functions::date::DurationUnit.YEARS)->meta::pure::functions::date::year()])->meta::pure::functions::relation::project(~[_id:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year])->meta::pure::functions::relation::distinct()->meta::pure::functions::lang::cast(@meta::pure::metamodel::relation::Relation<(_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])>)->meta::pure::functions::relation::project(~[worker_id2:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year]), meta::pure::functions::relation::JoinKind.LEFT, {r1: (worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1], r2: (worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|(($r1.worker_id == $r2.worker_id2) && ($r2.year <= $r1.ratings_year)) && ($r2.year >= ($r1.ratings_year + 4))})
+   DB Type:Snowflake
+
+''Generated database:
+Database meta::external::MyDatabase
+(
+  Schema REPRO_WORKER_DATA
+  (
+    Table PERF_RATING_APPENDLOG
+    (
+      _id VARCHAR(16777216) NOT NULL,
+      year DECIMAL(10, 0),
+      annual_rating VARCHAR(16777216),
+      summer_rating VARCHAR(16777216),
+      LAKE_DIGEST VARCHAR(256),
+      LAKE_BATCH_ID DECIMAL(10, 0),
+      LAKE_APPEND_TIME TIMESTAMP,
+      LAKE_IN_Z TIMESTAMP NOT NULL,
+      LAKE_OUT_Z TIMESTAMP
+    )
+    Table PERF_RATING_LH_BATCH_METADATA
+    (
+      table_name VARCHAR(255),
+      batch_start_ts_utc TIMESTAMP,
+      batch_end_ts_utc TIMESTAMP,
+      batch_status VARCHAR(32),
+      table_batch_id DECIMAL(10, 0),
+      ingest_request_id VARCHAR(64),
+      batch_source_info SEMISTRUCTURED,
+      additional_metadata SEMISTRUCTURED,
+      batch_statistics SEMISTRUCTURED
+    )
+    Table PERF_RATING_MILESTONED
+    (
+      _id VARCHAR(16777216) PRIMARY KEY,
+      year DECIMAL(10, 0),
+      annual_rating VARCHAR(16777216),
+      summer_rating VARCHAR(16777216),
+      LAKE_DIGEST VARCHAR(256),
+      LAKE_IN_ID DECIMAL(10, 0) PRIMARY KEY,
+      LAKE_OUT_ID DECIMAL(10, 0),
+      LAKE_IN_Z TIMESTAMP NOT NULL,
+      LAKE_OUT_Z TIMESTAMP
+    )
+  )
+)
+
+''Mappers:
+Schema REPRO_WORKER_DATA -> REPRO_WORKER_DATA Table PERF_RATING -> PERF_RATING_MILESTONED
+Schema REPRO_WORKER_DATA -> REPRO_WORKER_DATA Table ORG_HOME -> ORG_HOME_MILESTONED
+
+''Rewritten function
+   |#>{meta::external::MyDatabase.REPRO_WORKER_DATA.PERF_RATING_MILESTONED}#->meta::pure::functions::relation::project(~[_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|$x._id,year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|meta::pure::functions::date::now()->meta::pure::functions::date::adjust(1, meta::pure::functions::date::DurationUnit.YEARS)->meta::pure::functions::date::year()])->meta::pure::functions::relation::project(~[_id:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year])->meta::pure::functions::lang::cast(@meta::pure::metamodel::relation::Relation<(_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])>)->meta::pure::functions::relation::project(~[worker_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$x._id,ratings_year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$x.year->meta::pure::functions::multiplicity::toOne()])->meta::pure::functions::relation::join(#>{meta::external::MyDatabase.REPRO_WORKER_DATA.PERF_RATING_MILESTONED}#->meta::pure::functions::relation::project(~[_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|$x._id,year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|meta::pure::functions::date::now()->meta::pure::functions::date::adjust(1, meta::pure::functions::date::DurationUnit.YEARS)->meta::pure::functions::date::year()])->meta::pure::functions::relation::project(~[_id:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year])->meta::pure::functions::relation::distinct()->meta::pure::functions::lang::cast(@meta::pure::metamodel::relation::Relation<(_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])>)->meta::pure::functions::relation::project(~[worker_id2:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year]), meta::pure::functions::relation::JoinKind.LEFT, {r1: (worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1], r2: (worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|(($r1.worker_id == $r2.worker_id2) && ($r2.year <= $r1.ratings_year)) && ($r2.year >= ($r1.ratings_year + 4))})
+
+''
+Enriching Function Expressions with relevant info (mapping / binding / platform) and assigning routing strategy:
+''FunctionDefinition : meta::pure::mapping::from_FunctionDefinition_1__Runtime_1__T_m_
+''2026-03-05T13:35:52.972+0000 [000] Processing LambdaFunction , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:52.976+0000 [001]- Processing SimpleFunctionExpression (meta::pure::functions::relation::join_Relation_1__Relation_1__JoinKind_1__Function_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:52.980+0000 [001]- Processing parameter: rel1'
+'2026-03-05T13:35:52.981+0000 [002]-- Processing SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:52.984+0000 [002]-- Processing parameter: r'
+'2026-03-05T13:35:52.986+0000 [003]--- Processing SimpleFunctionExpression (meta::pure::functions::lang::cast_Any_m__T_1__T_m_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:52.989+0000 [003]--- Processing parameter: source'
+'2026-03-05T13:35:52.990+0000 [004]---- Processing SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:52.993+0000 [004]---- Processing parameter: r'
+'2026-03-05T13:35:52.995+0000 [005]----- Processing SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:52.998+0000 [005]----- Processing parameter: r'
+'2026-03-05T13:35:52.999+0000 [006]------ Processing InstanceValue RelationStoreAccessor, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.002+0000 [007]------- Processing RelationStoreAccessor , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.003+0000 [007]------- Returning RelationStoreAccessor  meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg52p)'
+'2026-03-05T13:35:53.011+0000 [006]------ Returning InstanceValue RelationStoreAccessor meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg553)'
+'2026-03-05T13:35:53.019+0000 [005]----- Completed processing parameter: r'
+'2026-03-05T13:35:53.020+0000 [005]----- Processing parameter: fs'
+'2026-03-05T13:35:53.021+0000 [006]------ Processing InstanceValue FuncColSpecArray, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.025+0000 [007]------- Processing FuncColSpecArray , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.028+0000 [007]------- Returning FuncColSpecArray  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=)'
+'2026-03-05T13:35:53.036+0000 [006]------ Returning InstanceValue FuncColSpecArray meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg58c)'
+'2026-03-05T13:35:53.044+0000 [005]----- Completed processing parameter: fs'
+'2026-03-05T13:35:53.055+0000 [005]----- Not prevalling: meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_ (params can not preval)'
+'2026-03-05T13:35:53.057+0000 [005]----- Returning SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg4ph)'
+'2026-03-05T13:35:53.064+0000 [004]---- Completed processing parameter: r'
+'2026-03-05T13:35:53.065+0000 [004]---- Processing parameter: fs'
+'2026-03-05T13:35:53.066+0000 [005]----- Processing InstanceValue FuncColSpecArray, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.069+0000 [006]------ Processing FuncColSpecArray , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.073+0000 [006]------ Returning FuncColSpecArray  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=)'
+'2026-03-05T13:35:53.082+0000 [005]----- Returning InstanceValue FuncColSpecArray meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg5bs)'
+'2026-03-05T13:35:53.089+0000 [004]---- Completed processing parameter: fs'
+'2026-03-05T13:35:53.100+0000 [004]---- Not prevalling: meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_ (params are not instance values)'
+'2026-03-05T13:35:53.101+0000 [004]---- Returning SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg4of)'
+'2026-03-05T13:35:53.107+0000 [003]--- Completed processing parameter: source'
+'2026-03-05T13:35:53.108+0000 [003]--- Processing parameter: object'
+'2026-03-05T13:35:53.110+0000 [004]---- Processing InstanceValue , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.112+0000 [004]---- Returning InstanceValue  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg5co)'
+'2026-03-05T13:35:53.118+0000 [003]--- Completed processing parameter: object'
+'2026-03-05T13:35:53.130+0000 [003]--- Not prevalling: meta::pure::functions::lang::cast_Any_m__T_1__T_m_ (params are not instance values)'
+'2026-03-05T13:35:53.131+0000 [003]--- Returning SimpleFunctionExpression (meta::pure::functions::lang::cast_Any_m__T_1__T_m_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg4nd)'
+'2026-03-05T13:35:53.138+0000 [002]-- Completed processing parameter: r'
+'2026-03-05T13:35:53.139+0000 [002]-- Processing parameter: fs'
+'2026-03-05T13:35:53.140+0000 [003]--- Processing InstanceValue FuncColSpecArray, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.144+0000 [004]---- Processing FuncColSpecArray , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.147+0000 [004]---- Returning FuncColSpecArray  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=)'
+'2026-03-05T13:35:53.155+0000 [003]--- Returning InstanceValue FuncColSpecArray meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg5g8)'
+'2026-03-05T13:35:53.163+0000 [002]-- Completed processing parameter: fs'
+'2026-03-05T13:35:53.173+0000 [002]-- Not prevalling: meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_ (params are not instance values)'
+'2026-03-05T13:35:53.174+0000 [002]-- Returning SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg4mg)'
+'2026-03-05T13:35:53.181+0000 [001]- Completed processing parameter: rel1'
+'2026-03-05T13:35:53.182+0000 [001]- Processing parameter: rel2'
+'2026-03-05T13:35:53.184+0000 [002]-- Processing SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.188+0000 [002]-- Processing parameter: r'
+'2026-03-05T13:35:53.189+0000 [003]--- Processing SimpleFunctionExpression (meta::pure::functions::lang::cast_Any_m__T_1__T_m_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.192+0000 [003]--- Processing parameter: source'
+'2026-03-05T13:35:53.194+0000 [004]---- Processing SimpleFunctionExpression (meta::pure::functions::relation::distinct_Relation_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.198+0000 [004]---- Processing parameter: rel'
+'2026-03-05T13:35:53.199+0000 [005]----- Processing SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.203+0000 [005]----- Processing parameter: r'
+'2026-03-05T13:35:53.204+0000 [006]------ Processing SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.208+0000 [006]------ Processing parameter: r'
+'2026-03-05T13:35:53.209+0000 [007]------- Processing InstanceValue RelationStoreAccessor, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.211+0000 [008]-------- Processing RelationStoreAccessor , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.213+0000 [008]-------- Returning RelationStoreAccessor  meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg5ub)'
+'2026-03-05T13:35:53.220+0000 [007]------- Returning InstanceValue RelationStoreAccessor meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg60l)'
+'2026-03-05T13:35:53.227+0000 [006]------ Completed processing parameter: r'
+'2026-03-05T13:35:53.228+0000 [006]------ Processing parameter: fs'
+'2026-03-05T13:35:53.230+0000 [007]------- Processing InstanceValue FuncColSpecArray, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.234+0000 [008]-------- Processing FuncColSpecArray , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.238+0000 [008]-------- Returning FuncColSpecArray  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=)'
+'2026-03-05T13:35:53.248+0000 [007]------- Returning InstanceValue FuncColSpecArray meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg69k)'
+'2026-03-05T13:35:53.256+0000 [006]------ Completed processing parameter: fs'
+'2026-03-05T13:35:53.268+0000 [006]------ Not prevalling: meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_ (params can not preval)'
+'2026-03-05T13:35:53.270+0000 [006]------ Returning SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg5l3)'
+'2026-03-05T13:35:53.277+0000 [005]----- Completed processing parameter: r'
+'2026-03-05T13:35:53.278+0000 [005]----- Processing parameter: fs'
+'2026-03-05T13:35:53.279+0000 [006]------ Processing InstanceValue FuncColSpecArray, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.282+0000 [007]------- Processing FuncColSpecArray , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.286+0000 [007]------- Returning FuncColSpecArray  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=)'
+'2026-03-05T13:35:53.294+0000 [006]------ Returning InstanceValue FuncColSpecArray meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg6d4)'
+'2026-03-05T13:35:53.302+0000 [005]----- Completed processing parameter: fs'
+'2026-03-05T13:35:53.314+0000 [005]----- Not prevalling: meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_ (params are not instance values)'
+'2026-03-05T13:35:53.316+0000 [005]----- Returning SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg5k1)'
+'2026-03-05T13:35:53.323+0000 [004]---- Completed processing parameter: rel'
+'2026-03-05T13:35:53.334+0000 [004]---- Not prevalling: meta::pure::functions::relation::distinct_Relation_1__Relation_1_ (params are not instance values)'
+'2026-03-05T13:35:53.335+0000 [004]---- Returning SimpleFunctionExpression (meta::pure::functions::relation::distinct_Relation_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg5j5)'
+'2026-03-05T13:35:53.342+0000 [003]--- Completed processing parameter: source'
+'2026-03-05T13:35:53.343+0000 [003]--- Processing parameter: object'
+'2026-03-05T13:35:53.345+0000 [004]---- Processing InstanceValue , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.346+0000 [004]---- Returning InstanceValue  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg6e4)'
+'2026-03-05T13:35:53.353+0000 [003]--- Completed processing parameter: object'
+'2026-03-05T13:35:53.364+0000 [003]--- Not prevalling: meta::pure::functions::lang::cast_Any_m__T_1__T_m_ (params are not instance values)'
+'2026-03-05T13:35:53.365+0000 [003]--- Returning SimpleFunctionExpression (meta::pure::functions::lang::cast_Any_m__T_1__T_m_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg5ia)'
+'2026-03-05T13:35:53.372+0000 [002]-- Completed processing parameter: r'
+'2026-03-05T13:35:53.373+0000 [002]-- Processing parameter: fs'
+'2026-03-05T13:35:53.374+0000 [003]--- Processing InstanceValue FuncColSpecArray, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.377+0000 [004]---- Processing FuncColSpecArray , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.381+0000 [004]---- Returning FuncColSpecArray  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=)'
+'2026-03-05T13:35:53.389+0000 [003]--- Returning InstanceValue FuncColSpecArray meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg6hk)'
+'2026-03-05T13:35:53.397+0000 [002]-- Completed processing parameter: fs'
+'2026-03-05T13:35:53.408+0000 [002]-- Not prevalling: meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_ (params are not instance values)'
+'2026-03-05T13:35:53.409+0000 [002]-- Returning SimpleFunctionExpression (meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=false, openVars=[], value=@_03rg5hd)'
+'2026-03-05T13:35:53.416+0000 [001]- Completed processing parameter: rel2'
+'2026-03-05T13:35:53.417+0000 [001]- Processing parameter: joinKind'
+'2026-03-05T13:35:53.418+0000 [002]-- Processing SimpleFunctionExpression (meta::pure::functions::lang::extractEnumValue_Enumeration_1__String_1__T_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.421+0000 [002]-- Processing parameter: enum'
+'2026-03-05T13:35:53.423+0000 [003]--- Processing InstanceValue Enumeration, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.424+0000 [004]---- Processing Enumeration , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.427+0000 [004]---- Returning Enumeration  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=JoinKind)'
+'2026-03-05T13:35:53.434+0000 [003]--- Returning InstanceValue Enumeration meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg6ji)'
+'2026-03-05T13:35:53.440+0000 [002]-- Completed processing parameter: enum'
+'2026-03-05T13:35:53.441+0000 [002]-- Processing parameter: value'
+'2026-03-05T13:35:53.442+0000 [003]--- Processing InstanceValue String, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.444+0000 [004]---- Processing String , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.446+0000 [004]---- Returning String  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value='LEFT')'
+'2026-03-05T13:35:53.453+0000 [003]--- Returning InstanceValue String meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg6ke)'
+'2026-03-05T13:35:53.459+0000 [002]-- Completed processing parameter: value'
+'2026-03-05T13:35:53.464+0000 [002]-- Performing preval: meta::pure::functions::lang::extractEnumValue_Enumeration_1__String_1__T_1_ (can recativate dynamically: true)'
+'2026-03-05T13:35:53.466+0000 [002]-- Returning InstanceValue JoinKind meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=true, openVars=[], value=@_03rjr0o)'
+'2026-03-05T13:35:53.473+0000 [001]- Completed processing parameter: joinKind'
+'2026-03-05T13:35:53.474+0000 [001]- Processing parameter: f'
+'2026-03-05T13:35:53.476+0000 [002]-- Processing InstanceValue LambdaFunction, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.478+0000 [003]--- Processing LambdaFunction , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.483+0000 [004]---- Processing SimpleFunctionExpression (meta::pure::functions::boolean::and_Boolean_1__Boolean_1__Boolean_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.487+0000 [005]----- Processing SimpleFunctionExpression (meta::pure::functions::boolean::and_Boolean_1__Boolean_1__Boolean_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.491+0000 [006]------ Processing SimpleFunctionExpression (meta::pure::functions::boolean::equal_Any_MANY__Any_MANY__Boolean_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.494+0000 [006]------ Processing parameter: left'
+'2026-03-05T13:35:53.496+0000 [007]------- Processing SimpleFunctionExpression (worker_id), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.500+0000 [007]------- Processing parameter: this'
+'2026-03-05T13:35:53.502+0000 [008]-------- Processing VariableExpression (r1), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.504+0000 [008]-------- Returning VariableExpression (r1) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=)'
+'2026-03-05T13:35:53.512+0000 [007]------- Completed processing parameter: this'
+'2026-03-05T13:35:53.526+0000 [007]------- Not prevalling: worker_id (params are not instance values)'
+'2026-03-05T13:35:53.528+0000 [007]------- Returning SimpleFunctionExpression (worker_id) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=@_03rg6sh)'
+'2026-03-05T13:35:53.535+0000 [006]------ Completed processing parameter: left'
+'2026-03-05T13:35:53.536+0000 [006]------ Processing parameter: right'
+'2026-03-05T13:35:53.539+0000 [007]------- Processing SimpleFunctionExpression (worker_id2), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.543+0000 [007]------- Processing parameter: this'
+'2026-03-05T13:35:53.545+0000 [008]-------- Processing VariableExpression (r2), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.547+0000 [008]-------- Returning VariableExpression (r2) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r2', value=)'
+'2026-03-05T13:35:53.554+0000 [007]------- Completed processing parameter: this'
+'2026-03-05T13:35:53.569+0000 [007]------- Not prevalling: worker_id2 (params are not instance values)'
+'2026-03-05T13:35:53.572+0000 [007]------- Returning SimpleFunctionExpression (worker_id2) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r2', value=@_03rg6tl)'
+'2026-03-05T13:35:53.579+0000 [006]------ Completed processing parameter: right'
+'2026-03-05T13:35:53.588+0000 [006]------ Not prevalling: meta::pure::functions::boolean::equal_Any_MANY__Any_MANY__Boolean_1_ (params are not instance values)'
+'2026-03-05T13:35:53.590+0000 [006]------ Returning SimpleFunctionExpression (meta::pure::functions::boolean::equal_Any_MANY__Any_MANY__Boolean_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=['r1', 'r2'], value=@_03rg6ri)'
+'2026-03-05T13:35:53.599+0000 [006]------ Processing SimpleFunctionExpression (meta::pure::functions::boolean::lessThanEqual_Number_1__Number_1__Boolean_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.601+0000 [006]------ Processing parameter: left'
+'2026-03-05T13:35:53.603+0000 [007]------- Processing SimpleFunctionExpression (year), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.608+0000 [007]------- Processing parameter: this'
+'2026-03-05T13:35:53.610+0000 [008]-------- Processing VariableExpression (r2), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.612+0000 [008]-------- Returning VariableExpression (r2) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r2', value=)'
+'2026-03-05T13:35:53.619+0000 [007]------- Completed processing parameter: this'
+'2026-03-05T13:35:53.633+0000 [007]------- Not prevalling: year (params are not instance values)'
+'2026-03-05T13:35:53.635+0000 [007]------- Returning SimpleFunctionExpression (year) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r2', value=@_03rg6vn)'
+'2026-03-05T13:35:53.643+0000 [006]------ Completed processing parameter: left'
+'2026-03-05T13:35:53.644+0000 [006]------ Processing parameter: right'
+'2026-03-05T13:35:53.646+0000 [007]------- Processing SimpleFunctionExpression (ratings_year), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.650+0000 [007]------- Processing parameter: this'
+'2026-03-05T13:35:53.653+0000 [008]-------- Processing VariableExpression (r1), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.655+0000 [008]-------- Returning VariableExpression (r1) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=)'
+'2026-03-05T13:35:53.662+0000 [007]------- Completed processing parameter: this'
+'2026-03-05T13:35:53.677+0000 [007]------- Not prevalling: ratings_year (params are not instance values)'
+'2026-03-05T13:35:53.679+0000 [007]------- Returning SimpleFunctionExpression (ratings_year) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=@_03rg70q)'
+'2026-03-05T13:35:53.687+0000 [006]------ Completed processing parameter: right'
+'2026-03-05T13:35:53.696+0000 [006]------ Not prevalling: meta::pure::functions::boolean::lessThanEqual_Number_1__Number_1__Boolean_1_ (params are not instance values)'
+'2026-03-05T13:35:53.698+0000 [006]------ Returning SimpleFunctionExpression (meta::pure::functions::boolean::lessThanEqual_Number_1__Number_1__Boolean_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=['r2', 'r1'], value=@_03rg6up)'
+'2026-03-05T13:35:53.707+0000 [005]----- Returning SimpleFunctionExpression (meta::pure::functions::boolean::and_Boolean_1__Boolean_1__Boolean_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=['r1', 'r2'], value=@_03rkgta)'
+'2026-03-05T13:35:53.715+0000 [005]----- Processing SimpleFunctionExpression (meta::pure::functions::boolean::greaterThanEqual_Number_1__Number_1__Boolean_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.719+0000 [005]----- Processing parameter: left'
+'2026-03-05T13:35:53.720+0000 [006]------ Processing SimpleFunctionExpression (year), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.725+0000 [006]------ Processing parameter: this'
+'2026-03-05T13:35:53.727+0000 [007]------- Processing VariableExpression (r2), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.729+0000 [007]------- Returning VariableExpression (r2) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r2', value=)'
+'2026-03-05T13:35:53.736+0000 [006]------ Completed processing parameter: this'
+'2026-03-05T13:35:53.750+0000 [006]------ Not prevalling: year (params are not instance values)'
+'2026-03-05T13:35:53.752+0000 [006]------ Returning SimpleFunctionExpression (year) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r2', value=@_03rg75t)'
+'2026-03-05T13:35:53.759+0000 [005]----- Completed processing parameter: left'
+'2026-03-05T13:35:53.760+0000 [005]----- Processing parameter: right'
+'2026-03-05T13:35:53.762+0000 [006]------ Processing SimpleFunctionExpression (meta::pure::functions::math::plus_Integer_MANY__Integer_1_), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.765+0000 [006]------ Processing parameter: ints'
+'2026-03-05T13:35:53.767+0000 [007]------- Processing InstanceValue SimpleFunctionExpressionInteger, inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.770+0000 [008]-------- Processing SimpleFunctionExpression (ratings_year), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.774+0000 [008]-------- Processing parameter: this'
+'2026-03-05T13:35:53.776+0000 [009]--------- Processing VariableExpression (r1), inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.778+0000 [009]--------- Returning VariableExpression (r1) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=)'
+'2026-03-05T13:35:53.786+0000 [008]-------- Completed processing parameter: this'
+'2026-03-05T13:35:53.802+0000 [008]-------- Not prevalling: ratings_year (params are not instance values)'
+'2026-03-05T13:35:53.804+0000 [008]-------- Returning SimpleFunctionExpression (ratings_year) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=@_03rg78e)'
+'2026-03-05T13:35:53.812+0000 [008]-------- Processing Integer , inScopeVars: [], inScopeTypeParams: []'
+'2026-03-05T13:35:53.814+0000 [008]-------- Returning Integer  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=4)'
+'2026-03-05T13:35:53.822+0000 [007]------- Returning InstanceValue SimpleFunctionExpressionInteger meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=@_03rg795)'
+'2026-03-05T13:35:53.829+0000 [006]------ Completed processing parameter: ints'
+'2026-03-05T13:35:53.839+0000 [006]------ Not prevalling: meta::pure::functions::math::plus_Integer_MANY__Integer_1_ (params are not instance values)'
+'2026-03-05T13:35:53.840+0000 [006]------ Returning SimpleFunctionExpression (meta::pure::functions::math::plus_Integer_MANY__Integer_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars='r1', value=@_03rg76p)'
+'2026-03-05T13:35:53.847+0000 [005]----- Completed processing parameter: right'
+'2026-03-05T13:35:53.864+0000 [005]----- Not prevalling: meta::pure::functions::boolean::greaterThanEqual_Number_1__Number_1__Boolean_1_ (params are not instance values)'
+'2026-03-05T13:35:53.866+0000 [005]----- Returning SimpleFunctionExpression (meta::pure::functions::boolean::greaterThanEqual_Number_1__Number_1__Boolean_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=['r2', 'r1'], value=@_03rg74v)'
+'2026-03-05T13:35:53.876+0000 [004]---- Returning SimpleFunctionExpression (meta::pure::functions::boolean::and_Boolean_1__Boolean_1__Boolean_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=['r1', 'r2'], value=@_03rl0at)'
+'2026-03-05T13:35:53.885+0000 [003]--- Returning LambdaFunction  meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg6pe)'
+'2026-03-05T13:35:53.893+0000 [002]-- Returning InstanceValue LambdaFunction meta::pure::router::preeval::PrevalWrapper(canPreval=true, modified=false, openVars=[], value=@_03rg7bf)'
+'2026-03-05T13:35:53.900+0000 [001]- Completed processing parameter: f'
+'2026-03-05T13:35:53.903+0000 [001]- Function expression has been modified truefalse'
+'2026-03-05T13:35:53.926+0000 [001]- Not prevalling: meta::pure::functions::relation::join_Relation_1__Relation_1__JoinKind_1__Function_1__Relation_1_ (params are not instance values)'
+'2026-03-05T13:35:53.927+0000 [001]- Returning SimpleFunctionExpression (meta::pure::functions::relation::join_Relation_1__Relation_1__JoinKind_1__Function_1__Relation_1_) meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=true, openVars=[], value=@_03rl2u2)'
+'2026-03-05T13:35:53.941+0000 [000] Returning LambdaFunction  meta::pure::router::preeval::PrevalWrapper(canPreval=false, modified=true, openVars=[], value=@_03rl5uk)'
+'Transformed To:'
+'|RelationElementAccessor(RelationStoreAccessor)->project(~[_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|$x._id,year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|now()->adjust(1, meta::pure::functions::date::DurationUnit.YEARS)->year()])->project(~[_id:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year])->cast(@meta::pure::metamodel::relation::Relation<(_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])>)->project(~[worker_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$x._id,ratings_year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$x.year->toOne()])->join(RelationElementAccessor(RelationStoreAccessor)->project(~[_id:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|$x._id,year:x: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:meta::pure::precisePrimitives::Int[0..1], annual_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], summer_rating:meta::pure::precisePrimitives::Varchar(16777216)[0..1], LAKE_DIGEST:meta::pure::precisePrimitives::Varchar(256)[0..1], LAKE_IN_ID:meta::pure::precisePrimitives::Int[1], LAKE_OUT_ID:meta::pure::precisePrimitives::Int[0..1], LAKE_IN_Z:meta::pure::precisePrimitives::Timestamp[1], LAKE_OUT_Z:meta::pure::precisePrimitives::Timestamp[0..1])[1]|now()->adjust(1, meta::pure::functions::date::DurationUnit.YEARS)->year()])->project(~[_id:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year])->distinct()->cast(@meta::pure::metamodel::relation::Relation<(_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])>)->project(~[worker_id2:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y._id,year:y: (_id:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|$y.year]), meta::pure::functions::relation::JoinKind.LEFT, {r1: (worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1], r2: (worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1]|(($r1.worker_id == $r2.worker_id2) && ($r2.year <= $r1.ratings_year)) && ($r2.year >= ($r1.ratings_year + 4))})'
+'Took: 0.976'
+'
+   Enriching Function Expressions with relevant info (mapping / binding / platform) and assigning routing strategy:
+''   NativeFunction : meta::pure::functions::relation::join_Relation_1__Relation_1__JoinKind_1__Function_1__Relation_1_
+''     NativeFunction : meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_
+''       NativeFunction : meta::pure::functions::lang::cast_Any_m__T_1__T_m_
+''         NativeFunction : meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_
+''           NativeFunction : meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_
+''               Processing Lambda
+''                    Column: _id
+''                     Variable:$x
+''                     ~>V) (StoreRoutingStrategy) $x
+''               Processing Lambda
+''                   NativeFunction : meta::pure::functions::date::year_Date_1__Integer_1_
+''                     NativeFunction : meta::pure::functions::date::adjust_Date_1__Integer_1__DurationUnit_1__Date_1_
+''                       NativeFunction : meta::pure::functions::date::now__DateTime_1_
+''                       NativeFunction : meta::pure::functions::lang::extractEnumValue_Enumeration_1__String_1__T_1_
+''                       ~>NQS) (StoreRoutingStrategy) Enumeration DurationUnit -> extractEnumValue('YEARS')
+''                     ~>NQS) (StoreRoutingStrategy) now() -> adjust(1, Enumeration DurationUnit -> extractEnumValue('YEARS'))
+''                   ~>NQS) (StoreRoutingStrategy) now() -> adjust(1, Enumeration DurationUnit -> extractEnumValue('YEARS')) -> year()
+''           ~>NQS) (StoreRoutingStrategy) [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])]
+''             Processing Lambda
+''                  Column: _id
+''                   Variable:$y
+''                   ~>V) (StoreRoutingStrategy) $y
+''             Processing Lambda
+''                  Column: year
+''                   Variable:$y
+''                   ~>V) (StoreRoutingStrategy) $y
+''         ~>NQS) (StoreRoutingStrategy) [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])]
+''       ~>NQS) (StoreRoutingStrategy) [1 [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()]
+''         Processing Lambda
+''              Column: _id
+''               Variable:$x
+''               ~>V) (StoreRoutingStrategy) $x
+''         Processing Lambda
+''             NativeFunction : meta::pure::functions::multiplicity::toOne_T_MANY__T_1_
+''                Column: year
+''                 Variable:$x
+''                 ~>V) (StoreRoutingStrategy) $x
+''             ~>NQS) (StoreRoutingStrategy) $x.year -> toOne()
+''     ~>NQS) (StoreRoutingStrategy) [1 [1 [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()] -> project(~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())])]
+''     NativeFunction : meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_
+''       NativeFunction : meta::pure::functions::lang::cast_Any_m__T_1__T_m_
+''         NativeFunction : meta::pure::functions::relation::distinct_Relation_1__Relation_1_
+''           NativeFunction : meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_
+''             NativeFunction : meta::pure::functions::relation::project_Relation_1__FuncColSpecArray_1__Relation_1_
+''                 Processing Lambda
+''                      Column: _id
+''                       Variable:$x
+''                       ~>V) (StoreRoutingStrategy) $x
+''                 Processing Lambda
+''                     NativeFunction : meta::pure::functions::date::year_Date_1__Integer_1_
+''                       NativeFunction : meta::pure::functions::date::adjust_Date_1__Integer_1__DurationUnit_1__Date_1_
+''                         NativeFunction : meta::pure::functions::date::now__DateTime_1_
+''                         NativeFunction : meta::pure::functions::lang::extractEnumValue_Enumeration_1__String_1__T_1_
+''                         ~>NQS) (StoreRoutingStrategy) Enumeration DurationUnit -> extractEnumValue('YEARS')
+''                       ~>NQS) (StoreRoutingStrategy) now() -> adjust(1, Enumeration DurationUnit -> extractEnumValue('YEARS'))
+''                     ~>NQS) (StoreRoutingStrategy) now() -> adjust(1, Enumeration DurationUnit -> extractEnumValue('YEARS')) -> year()
+''             ~>NQS) (StoreRoutingStrategy) [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])]
+''               Processing Lambda
+''                    Column: _id
+''                     Variable:$y
+''                     ~>V) (StoreRoutingStrategy) $y
+''               Processing Lambda
+''                    Column: year
+''                     Variable:$y
+''                     ~>V) (StoreRoutingStrategy) $y
+''           ~>NQS) (StoreRoutingStrategy) [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])]
+''         ~>NQS) (StoreRoutingStrategy) [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()]
+''       ~>NQS) (StoreRoutingStrategy) [2 [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()]
+''         Processing Lambda
+''              Column: _id
+''               Variable:$y
+''               ~>V) (StoreRoutingStrategy) $y
+''         Processing Lambda
+''              Column: year
+''               Variable:$y
+''               ~>V) (StoreRoutingStrategy) $y
+''     ~>NQS) (StoreRoutingStrategy) [2 [2 [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()] -> project(~[worker_id2:_id(),year:year()])]
+''     Processing Lambda
+''         NativeFunction : meta::pure::functions::boolean::and_Boolean_1__Boolean_1__Boolean_1_
+''           NativeFunction : meta::pure::functions::boolean::and_Boolean_1__Boolean_1__Boolean_1_
+''             NativeFunction : meta::pure::functions::boolean::equal_Any_MANY__Any_MANY__Boolean_1_
+''                Column: worker_id
+''                 Variable:$r1
+''                 ~>V) (StoreRoutingStrategy) $r1
+''                Column: worker_id2
+''                 Variable:$r2
+''                 ~>V) (StoreRoutingStrategy) $r2
+''             ~>NQS) (StoreRoutingStrategy) $r1.worker_id == $r2.worker_id2
+''             NativeFunction : meta::pure::functions::boolean::lessThanEqual_Number_1__Number_1__Boolean_1_
+''                Column: year
+''                 Variable:$r2
+''                 ~>V) (StoreRoutingStrategy) $r2
+''                Column: ratings_year
+''                 Variable:$r1
+''                 ~>V) (StoreRoutingStrategy) $r1
+''             ~>NQS) (StoreRoutingStrategy) $r2.year -> lessThanEqual($r1.ratings_year)
+''           ~>NQS) (StoreRoutingStrategy) $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year))
+''           FunctionDefinition : meta::pure::functions::boolean::greaterThanEqual_Number_1__Number_1__Boolean_1_
+''              Column: year
+''               Variable:$r2
+''               ~>V) (StoreRoutingStrategy) $r2
+''             NativeFunction : meta::pure::functions::math::plus_Integer_MANY__Integer_1_
+''                Column: ratings_year
+''                 Variable:$r1
+''                 ~>V) (StoreRoutingStrategy) $r1
+''             ~>NQS) (StoreRoutingStrategy) [$r1.ratings_year, 4] -> plus()
+''           ~>NQS) (StoreRoutingStrategy) $r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus())
+''         ~>NQS) (StoreRoutingStrategy) $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()))
+''   ~>NQS) (StoreRoutingStrategy) [2 [1 [1 [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()] -> project(~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())])] -> join([2 [2 [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()] -> project(~[worker_id2:_id(),year:year()])], JoinKind LEFT, [Routed Func:r1:(worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1],r2:(worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1] | $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()));])]
+''
+   Enriching Function Expressions with strategy based info (mapping / binding / platform):
+''
+   Clustering Function Expressions:''
+     Processing: [2 [1 [1 [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()] -> project(~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())])] -> join([2 [2 [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()] -> project(~[worker_id2:_id(),year:year()])], JoinKind LEFT, [Routed Func:r1:(worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1],r2:(worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1] | $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()));])]
+''                       Constant: RelationStoreAccessor @_03rg52p
+''                         ~> RelationStoreAccessor @_03rg52p
+''                    Constant: ~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))]
+''                      ~> ~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))]
+''                    Func Expression(merge): [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])
+''                 Constant: ~[_id:_id(),year:year()]
+''                   ~> ~[_id:_id(),year:year()]
+''                 Func Expression(merge): [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])
+''              Constant: 
+''                ~> 
+''              Func Expression(merge): [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()
+''           Constant: ~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())]
+''             ~> ~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())]
+''           Func Expression(merge): [1 [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()] -> project(~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())])
+''                          Constant: RelationStoreAccessor @_03rg5ub
+''                            ~> RelationStoreAccessor @_03rg5ub
+''                       Constant: ~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))]
+''                         ~> ~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))]
+''                       Func Expression(merge): [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])
+''                    Constant: ~[_id:_id(),year:year()]
+''                      ~> ~[_id:_id(),year:year()]
+''                    Func Expression(merge): [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])
+''                 Func Expression(merge): [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()
+''              Constant: 
+''                ~> 
+''              Func Expression(merge): [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()
+''           Constant: ~[worker_id2:_id(),year:year()]
+''             ~> ~[worker_id2:_id(),year:year()]
+''           Func Expression(merge): [2 [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()] -> project(~[worker_id2:_id(),year:year()])
+''        Constant: JoinKind LEFT
+''          ~> JoinKind LEFT
+''
+          Processing: $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()))
+''            Var: $r1
+''            Func Expression(non unique: 0): $r1.worker_id
+''            ~> $r1.worker_id
+''            Var: $r2
+''            Func Expression(non unique: 0): $r2.worker_id2
+''            ~> $r2.worker_id2
+''            Func Expression(non unique: 0): $r1.worker_id == $r2.worker_id2
+''            ~> $r1.worker_id == $r2.worker_id2
+''            Var: $r2
+''            Func Expression(non unique: 0): $r2.year
+''            ~> $r2.year
+''            Var: $r1
+''            Func Expression(non unique: 0): $r1.ratings_year
+''            ~> $r1.ratings_year
+''            Func Expression(non unique: 0): $r2.year -> lessThanEqual($r1.ratings_year)
+''            ~> $r2.year -> lessThanEqual($r1.ratings_year)
+''            Func Expression(non unique: 0): $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year))
+''            ~> $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year))
+''            Var: $r2
+''            Func Expression(non unique: 0): $r2.year
+''            ~> $r2.year
+''            Constant: [$r1.ratings_year, 4]
+''              Var: $r1
+''              Func Expression(non unique: 0): $r1.ratings_year
+''              ~> $r1.ratings_year
+''              ~> [$r1.ratings_year, 4]
+''            Func Expression(non unique: 0): [$r1.ratings_year, 4] -> plus()
+''            ~> [$r1.ratings_year, 4] -> plus()
+''            Func Expression(non unique: 0): $r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus())
+''            ~> $r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus())
+''            Func Expression(non unique: 0): $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()))
+''            ~> $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()))
+''        Func Expression(merge): [1 [1 [1 [1 [1 RelationStoreAccessor @_03rg52p] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> cast()] -> project(~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())])] -> join([2 [2 [2 [2 [2 [2 RelationStoreAccessor @_03rg5ub] -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))])] -> project(~[_id:_id(),year:year()])] -> distinct()] -> cast()] -> project(~[worker_id2:_id(),year:year()])], JoinKind LEFT, [Routed Func:r1:(worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1],r2:(worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1] | $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()));])
+'' | {meta::external::MyDatabase> RelationStoreAccessor @_03rg52p -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))]) -> project(~[_id:_id(),year:year()]) -> cast() -> project(~[worker_id:_id(),ratings_year:toOne_T_MANY__T_1_(year())]) -> join(RelationStoreAccessor @_03rg5ub -> project(~[_id:_id(),year:year_Date_1__Integer_1_(adjust_Date_1__Integer_1__DurationUnit_1__Date_1_(now__DateTime_1_(),1,extractEnumValue_Enumeration_1__String_1__T_1_(DurationUnit,YEARS)))]) -> project(~[_id:_id(),year:year()]) -> distinct() -> cast() -> project(~[worker_id2:_id(),year:year()]), JoinKind LEFT, [Routed Func:r1:(worker_id:meta::pure::precisePrimitives::Varchar(16777216)[1], ratings_year:Integer[1])[1],r2:(worker_id2:meta::pure::precisePrimitives::Varchar(16777216)[1], year:Integer[1])[1] | $r1.worker_id == $r2.worker_id2 -> and($r2.year -> lessThanEqual($r1.ratings_year)) -> and($r2.year -> greaterThanEqual([$r1.ratings_year, 4] -> plus()));])};
+''
+Enriching Function Expressions with strategy based info (mapping / binding / platform):
+''
+Clustering Function Expressions:''
+  Processing: [from_function_wrapper LambdaFunction()]
+''     Func Expression(non unique: 0): LambdaFunction()
+''     ~> LambdaFunction()
+'' | {meta::external::MyDatabase> LambdaFunction()};
+''
+Generating Execution Plan:
+''Generating plan for cluster: {meta::external::MyDatabase> LambdaFunction()}
+''   >Process Function Expression: LambdaFunction
+''         >Process Function Expression: join_Relation_1__Relation_1__JoinKind_1__Function_1__Relation_1_
+''            >Process Function Expression using supported function: processRelationJoin_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''            >Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+''               >Process Function Expression using supported function: processTdsProject_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''               >Process Function Expression: cast_Any_m__T_1__T_m_
+''                  >Process Function Expression using supported function: processCast_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+''                     >Process Function Expression using supported function: processTdsProject_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                     >Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+''                        >Process Function Expression using supported function: processTdsProject_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                        >Processing Relation Database Accessor: select "dbAccessor_d_fd_d_d0_d#5"._id as "_id", "dbAccessor_d_fd_d_d0_d#5".year as "year", "dbAccessor_d_fd_d_d0_d#5".annual_rating as "annual_rating", "dbAccessor_d_fd_d_d0_d#5".summer_rating as "summer_rating", "dbAccessor_d_fd_d_d0_d#5".LAKE_DIGEST as "LAKE_DIGEST", "dbAccessor_d_fd_d_d0_d#5".LAKE_IN_ID as "LAKE_IN_ID", "dbAccessor_d_fd_d_d0_d#5".LAKE_OUT_ID as "LAKE_OUT_ID", "dbAccessor_d_fd_d_d0_d#5".LAKE_IN_Z as "LAKE_IN_Z", "dbAccessor_d_fd_d_d0_d#5".LAKE_OUT_Z as "LAKE_OUT_Z" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+''                           >Process Function Expression: _id
+''                                 >Process Variable Expression, name:x
+''                                 Result of Variable Expression, name:x - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+''                           >End Process Function Expression: _id
+                             select "dbAccessor_d_fd_d_d0_d#5"._id from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                           >Process Function Expression: year_Date_1__Integer_1_
+''                              >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                              >Process Function Expression: adjust_Date_1__Integer_1__DurationUnit_1__Date_1_
+''                                 >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                                 >Process Function Expression: now__DateTime_1_
+''                                    >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''now'
+'                                 >End Process Function Expression: now__DateTime_1_
+                                   select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 >Process Function Expression: extractEnumValue_Enumeration_1__String_1__T_1_
+''                                    >Process Function Expression using supported function: processEnumValue_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                                      Extract Enum Value (meta::pure::functions::date::DurationUnit.YEARS)
+''                                      Has property mapping: false
+''                                 >End Process Function Expression: extractEnumValue_Enumeration_1__String_1__T_1_
+                                   select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge
+                                      [
+                                        0 select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                        0 select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                        0 select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                      ]
+''                                 *>Isolation: 
+                                   select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge(hasIsolations:false)
+                                      [
+                                        0 select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                        0 select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                        0 select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                      ]
+''                                      (A): select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+                                      (Q): select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                      (A): select now(), 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+                                      (Q): select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge Result: select now(), 1, YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''adjust'
+'                              >End Process Function Expression: adjust_Date_1__Integer_1__DurationUnit_1__Date_1_
+                                select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                 Merge
+                                   [
+                                     0 select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                   ]
+''                              *>Isolation: 
+                                select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                              *>Isolation Result: 
+                                select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                 Merge(hasIsolations:false)
+                                   [
+                                     0 select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                   ]
+''                                 Merge Result: select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''year'
+'                           >End Process Function Expression: year_Date_1__Integer_1_
+                             select year(adjust(now(), 1, YEARS)) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                     >End Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+                       select "dbAccessor_d_fd_d_d0_d#5"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        >Process Function Expression: _id
+''                              >Process Variable Expression, name:y
+''                              Result of Variable Expression, name:y - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+''                        >End Process Function Expression: _id
+                          select "dbAccessor_d_fd_d_d0_d#5"._id from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                        >Process Function Expression: year
+''                              >Process Variable Expression, name:y
+''                              Result of Variable Expression, name:y - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+''                        >End Process Function Expression: year
+                          select year(adjust(now(), 1, YEARS)) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+                    select "dbAccessor_d_fd_d_d0_d#5"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''               >End Process Function Expression: cast_Any_m__T_1__T_m_
+                 select "dbAccessor_d_fd_d_d0_d#5"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  >Process Function Expression: _id
+''                        >Process Variable Expression, name:x
+''                        Result of Variable Expression, name:x - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+''                  >End Process Function Expression: _id
+                    select "dbAccessor_d_fd_d_d0_d#5"._id from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  >Process Function Expression: toOne_T_MANY__T_1_
+''                     >Process Function Expression using supported function: processNoOp_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                     >Process Function Expression: year
+''                           >Process Variable Expression, name:x
+''                           Result of Variable Expression, name:x - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+''                     >End Process Function Expression: year
+                       select year(adjust(now(), 1, YEARS)) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                  >End Process Function Expression: toOne_T_MANY__T_1_
+                    select year(adjust(now(), 1, YEARS)) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''            >End Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+              select "dbAccessor_d_fd_d_d0_d#5"._id as "worker_id", year(adjust(now(), 1, YEARS)) as "ratings_year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''            >Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+''               >Process Function Expression using supported function: processTdsProject_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''               >Process Function Expression: cast_Any_m__T_1__T_m_
+''                  >Process Function Expression using supported function: processCast_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: distinct_Relation_1__Relation_1_
+''                     >Process Function Expression using supported function: processDistinct_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                     >Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+''                        >Process Function Expression using supported function: processTdsProject_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                        >Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+''                           >Process Function Expression using supported function: processTdsProject_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                           >Processing Relation Database Accessor: select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", "dbAccessor_d_fd_d_d1_d#6".year as "year", "dbAccessor_d_fd_d_d1_d#6".annual_rating as "annual_rating", "dbAccessor_d_fd_d_d1_d#6".summer_rating as "summer_rating", "dbAccessor_d_fd_d_d1_d#6".LAKE_DIGEST as "LAKE_DIGEST", "dbAccessor_d_fd_d_d1_d#6".LAKE_IN_ID as "LAKE_IN_ID", "dbAccessor_d_fd_d_d1_d#6".LAKE_OUT_ID as "LAKE_OUT_ID", "dbAccessor_d_fd_d_d1_d#6".LAKE_IN_Z as "LAKE_IN_Z", "dbAccessor_d_fd_d_d1_d#6".LAKE_OUT_Z as "LAKE_OUT_Z" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+''                              >Process Function Expression: _id
+''                                    >Process Variable Expression, name:x
+''                                    Result of Variable Expression, name:x - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+''                              >End Process Function Expression: _id
+                                select "dbAccessor_d_fd_d_d1_d#6"._id from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                              >Process Function Expression: year_Date_1__Integer_1_
+''                                 >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                                 >Process Function Expression: adjust_Date_1__Integer_1__DurationUnit_1__Date_1_
+''                                    >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                                    >Process Function Expression: now__DateTime_1_
+''                                       >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''now'
+'                                    >End Process Function Expression: now__DateTime_1_
+                                      select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                    >Process Function Expression: extractEnumValue_Enumeration_1__String_1__T_1_
+''                                       >Process Function Expression using supported function: processEnumValue_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                                         Extract Enum Value (meta::pure::functions::date::DurationUnit.YEARS)
+''                                         Has property mapping: false
+''                                    >End Process Function Expression: extractEnumValue_Enumeration_1__String_1__T_1_
+                                      select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                    *>Isolation: 
+                                      select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                      ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                    *>Isolation Result: 
+                                      select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                    *>Isolation: 
+                                      select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                      ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                    *>Isolation Result: 
+                                      select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                    *>Isolation: 
+                                      select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                      ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                    *>Isolation Result: 
+                                      select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                       Merge
+                                         [
+                                           0 select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                           0 select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                           0 select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                         ]
+''                                    *>Isolation: 
+                                      select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                      ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                    *>Isolation Result: 
+                                      select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                    *>Isolation: 
+                                      select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                      ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                    *>Isolation Result: 
+                                      select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                    *>Isolation: 
+                                      select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                      ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                    *>Isolation Result: 
+                                      select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                       Merge(hasIsolations:false)
+                                         [
+                                           0 select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                           0 select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                           0 select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                         ]
+''                                         (A): select now() from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+                                         (Q): select 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                         (A): select now(), 1 from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+                                         (Q): select YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''                                       Merge Result: select now(), 1, YEARS from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                                 >>>>> 
+                                                 }}}}} 
+                                                 $$$$$ 0
+''adjust'
+'                                 >End Process Function Expression: adjust_Date_1__Integer_1__DurationUnit_1__Date_1_
+                                   select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge
+                                      [
+                                        0 select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                      ]
+''                                 *>Isolation: 
+                                   select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge(hasIsolations:false)
+                                      [
+                                        0 select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                      ]
+''                                    Merge Result: select adjust(now(), 1, YEARS) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''year'
+'                              >End Process Function Expression: year_Date_1__Integer_1_
+                                select year(adjust(now(), 1, YEARS)) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                        >End Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+                          select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                           >Process Function Expression: _id
+''                                 >Process Variable Expression, name:y
+''                                 Result of Variable Expression, name:y - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+''                           >End Process Function Expression: _id
+                             select "dbAccessor_d_fd_d_d1_d#6"._id from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                           >Process Function Expression: year
+''                                 >Process Variable Expression, name:y
+''                                 Result of Variable Expression, name:y - select * from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+''                           >End Process Function Expression: year
+                             select year(adjust(now(), 1, YEARS)) from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                     >End Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+                       select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge
+                          [
+                            0 select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                            0 select *
+                          ]
+''                     *>Isolation: 
+                       select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select *
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select *
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge(hasIsolations:false)
+                          [
+                            0 select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                            0 select *
+                          ]
+''                          (A): select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+                          (Q): select *
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge Result: select "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                  >End Process Function Expression: distinct_Relation_1__Relation_1_
+                    select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''               >End Process Function Expression: cast_Any_m__T_1__T_m_
+                 select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6"
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  >Process Function Expression: _id
+''                        >Process Variable Expression, name:y
+''                        Result of Variable Expression, name:y - select * from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect"
+''                  >End Process Function Expression: _id
+                    select "subselect"."_id" from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  >Process Function Expression: year
+''                        >Process Variable Expression, name:y
+''                        Result of Variable Expression, name:y - select * from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect"
+''                  >End Process Function Expression: year
+                    select "subselect"."year" from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''            >End Process Function Expression: project_Relation_1__FuncColSpecArray_1__Relation_1_
+              select "subselect"."_id" as "worker_id2", "subselect"."year" as "year" from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''            >Process Function Expression: and_Boolean_1__Boolean_1__Boolean_1_
+''               >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''               >Process Function Expression: and_Boolean_1__Boolean_1__Boolean_1_
+''                  >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: equal_Any_MANY__Any_MANY__Boolean_1_
+''                     >Process Function Expression using supported function: processEquals_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                     >Process Function Expression: worker_id
+''                           >Process Variable Expression, name:r1
+''                           Result of Variable Expression, name:r1 - select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+''                     >End Process Function Expression: worker_id
+                       select "joinleft__d_fd_d"."worker_id"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     >Process Function Expression: worker_id2
+''                           >Process Variable Expression, name:r2
+''                           Result of Variable Expression, name:r2 - select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+''                     >End Process Function Expression: worker_id2
+                       select "joinright__d_fd_d"."worker_id2"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge
+                          [
+                            0 select "joinleft__d_fd_d"."worker_id"
+                            0 select "joinright__d_fd_d"."worker_id2"
+                          ]
+''                     *>Isolation: 
+                       select "joinleft__d_fd_d"."worker_id"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinleft__d_fd_d"."worker_id"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select "joinright__d_fd_d"."worker_id2"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinright__d_fd_d"."worker_id2"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge(hasIsolations:false)
+                          [
+                            0 select "joinleft__d_fd_d"."worker_id"
+                            0 select "joinright__d_fd_d"."worker_id2"
+                          ]
+''                          (A): select "joinleft__d_fd_d"."worker_id"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+                          (Q): select "joinright__d_fd_d"."worker_id2"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge Result: select "joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                  >End Process Function Expression: equal_Any_MANY__Any_MANY__Boolean_1_
+                    select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  >Process Function Expression: lessThanEqual_Number_1__Number_1__Boolean_1_
+''                     >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                     >Process Function Expression: year
+''                           >Process Variable Expression, name:r2
+''                           Result of Variable Expression, name:r2 - select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+''                     >End Process Function Expression: year
+                       select "joinright__d_fd_d"."year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     >Process Function Expression: ratings_year
+''                           >Process Variable Expression, name:r1
+''                           Result of Variable Expression, name:r1 - select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+''                     >End Process Function Expression: ratings_year
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select "joinright__d_fd_d"."year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinright__d_fd_d"."year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge
+                          [
+                            0 select "joinright__d_fd_d"."year"
+                            0 select "joinleft__d_fd_d"."ratings_year"
+                          ]
+''                     *>Isolation: 
+                       select "joinright__d_fd_d"."year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinright__d_fd_d"."year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge(hasIsolations:false)
+                          [
+                            0 select "joinright__d_fd_d"."year"
+                            0 select "joinleft__d_fd_d"."ratings_year"
+                          ]
+''                          (A): select "joinright__d_fd_d"."year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+                          (Q): select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge Result: select "joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''lessThanEqual'
+'                  >End Process Function Expression: lessThanEqual_Number_1__Number_1__Boolean_1_
+                    select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  *>Isolation: 
+                    select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  *>Isolation: 
+                    select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                     Merge
+                       [
+                         0 select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                         0 select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                       ]
+''                  *>Isolation: 
+                    select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  *>Isolation: 
+                    select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                     Merge(hasIsolations:false)
+                       [
+                         0 select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                         0 select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                       ]
+''                       (A): select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+                       (Q): select lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                     Merge Result: select equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''and'
+'               >End Process Function Expression: and_Boolean_1__Boolean_1__Boolean_1_
+                 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               >Process Function Expression: greaterThanEqual_Number_1__Number_1__Boolean_1_
+''                  >Process Function Expression using supported function: processDynaFunction_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: year
+''                        >Process Variable Expression, name:r2
+''                        Result of Variable Expression, name:r2 - select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+''                  >End Process Function Expression: year
+                    select "joinright__d_fd_d"."year"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  >Process Function Expression: plus_Integer_MANY__Integer_1_
+''                     >Process Function Expression using supported function: processPlus_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                     >Process Function Expression: ratings_year
+''                           >Process Variable Expression, name:r1
+''                           Result of Variable Expression, name:r1 - select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+''                     >End Process Function Expression: ratings_year
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge
+                          [
+                            0 select "joinleft__d_fd_d"."ratings_year"
+                            0 select 4
+                            0 select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+                          ]
+''                     *>Isolation: 
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select 4
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select 4
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge(hasIsolations:false)
+                          [
+                            0 select "joinleft__d_fd_d"."ratings_year"
+                            0 select 4
+                            0 select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+                          ]
+''                          (A): select "joinleft__d_fd_d"."ratings_year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+                          (Q): select 4
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                          (A): select "joinleft__d_fd_d"."ratings_year", 4
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+                          (Q): select "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        Merge Result: select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", "joinright__d_fd_d"."worker_id2" as "worker_id2", "joinright__d_fd_d"."year" as "year"
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+'[
+   Anonymous_StripedId instance TableAliasColumn
+       alias(Property):
+           Anonymous_StripedId instance TableAlias
+               classifierGenericType(Property):
+                   [>1]  instance GenericType
+               name(Property):
+                   [>1] "joinleft_"_d_fd_d instance String
+               relationalElement(Property):
+                   [>1] Anonymous_StripedId instance TdsSelectSqlQuery
+       classifierGenericType(Property):
+            instance GenericType
+               rawType(Property):
+                   [X] TableAliasColumn instance Class
+       column(Property):
+           Anonymous_StripedId instance Column
+               classifierGenericType(Property):
+                   [>1]  instance GenericType
+               name(Property):
+                   [>1] "ratings_year" instance String
+               type(Property):
+                   [>1] Anonymous_StripedId instance Integer
+   Anonymous_StripedId instance Literal
+       classifierGenericType(Property):
+            instance GenericType
+               rawType(Property):
+                   [X] Literal instance Class
+       value(Property):
+           4 instance Integer
+   Anonymous_StripedId instance Alias
+       classifierGenericType(Property):
+            instance GenericType
+               rawType(Property):
+                   [X] Alias instance Class
+       name(Property):
+           "worker_id" instance String
+       relationalElement(Property):
+           Anonymous_StripedId instance TableAliasColumn
+               alias(Property):
+                   [>1] Anonymous_StripedId instance TableAlias
+               classifierGenericType(Property):
+                   [>1]  instance GenericType
+               column(Property):
+                   [>1] Anonymous_StripedId instance Column
+   Anonymous_StripedId instance Alias
+       classifierGenericType(Property):
+            instance GenericType
+               rawType(Property):
+                   [X] Alias instance Class
+       name(Property):
+           "ratings_year" instance String
+       relationalElement(Property):
+           Anonymous_StripedId instance TableAliasColumn
+               alias(Property):
+                   [>1] Anonymous_StripedId instance TableAlias
+               classifierGenericType(Property):
+                   [>1]  instance GenericType
+               column(Property):
+                   [>1] Anonymous_StripedId instance Column
+   Anonymous_StripedId instance Alias
+       classifierGenericType(Property):
+            instance GenericType
+               rawType(Property):
+                   [X] Alias instance Class
+       name(Property):
+           "worker_id2" instance String
+       relationalElement(Property):
+           Anonymous_StripedId instance TableAliasColumn
+               alias(Property):
+                   [>1] Anonymous_StripedId instance TableAlias
+               classifierGenericType(Property):
+                   [>1]  instance GenericType
+               column(Property):
+                   [>1] Anonymous_StripedId instance Column
+   Anonymous_StripedId instance Alias
+       classifierGenericType(Property):
+            instance GenericType
+               rawType(Property):
+                   [X] Alias instance Class
+       name(Property):
+           "year" instance String
+       relationalElement(Property):
+           Anonymous_StripedId instance TableAliasColumn
+               alias(Property):
+                   [>1] Anonymous_StripedId instance TableAlias
+               classifierGenericType(Property):
+                   [>1]  instance GenericType
+               column(Property):
+                   [>1] Anonymous_StripedId instance Column
+]
+'                  >End Process Function Expression: plus_Integer_MANY__Integer_1_
+                    select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  *>Isolation: 
+                    select "joinright__d_fd_d"."year"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select "joinright__d_fd_d"."year"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  *>Isolation: 
+                    select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                     Merge
+                       [
+                         0 select "joinright__d_fd_d"."year"
+                         0 select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                       ]
+''                  *>Isolation: 
+                    select "joinright__d_fd_d"."year"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select "joinright__d_fd_d"."year"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                  *>Isolation: 
+                    select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                    ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                  *>Isolation Result: 
+                    select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                     Merge(hasIsolations:false)
+                       [
+                         0 select "joinright__d_fd_d"."year"
+                         0 select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                       ]
+''                       (A): select "joinright__d_fd_d"."year"
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+                       (Q): select "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''                     Merge Result: select "joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id" as "worker_id", "joinleft__d_fd_d"."ratings_year" as "ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+'Anonymous_StripedId instance DynaFunction
+    classifierGenericType(Property):
+         instance GenericType
+            rawType(Property):
+                [X] DynaFunction instance Class
+    name(Property):
+        greaterThanEqual instance String
+    parameters(Property):
+        Anonymous_StripedId instance TableAliasColumn
+            alias(Property):
+                [>1] Anonymous_StripedId instance TableAlias
+            classifierGenericType(Property):
+                [>1]  instance GenericType
+            column(Property):
+                [>1] Anonymous_StripedId instance Column
+        Anonymous_StripedId instance TableAliasColumn
+            alias(Property):
+                [>1] Anonymous_StripedId instance TableAlias
+            classifierGenericType(Property):
+                [>1]  instance GenericType
+            column(Property):
+                [>1] Anonymous_StripedId instance Column
+        Anonymous_StripedId instance Literal
+            classifierGenericType(Property):
+                [>1]  instance GenericType
+            value(Property):
+                [>1] 4 instance Integer
+        Anonymous_StripedId instance TableAliasColumn
+            alias(Property):
+                [>1] Anonymous_StripedId instance TableAlias
+            classifierGenericType(Property):
+                [>1]  instance GenericType
+            column(Property):
+                [>1] Anonymous_StripedId instance Column
+        Anonymous_StripedId instance TableAliasColumn
+            alias(Property):
+                [>1] Anonymous_StripedId instance TableAlias
+            classifierGenericType(Property):
+                [>1]  instance GenericType
+            column(Property):
+                [>1] Anonymous_StripedId instance Column
+        Anonymous_StripedId instance DynaFunction
+            classifierGenericType(Property):
+                [>1]  instance GenericType
+            name(Property):
+                [>1] plus instance String
+            parameters(Property):
+                [>1] Anonymous_StripedId instance TableAliasColumn
+                [>1] Anonymous_StripedId instance TableAliasColumn
+'greaterThanEqual'
+'               >End Process Function Expression: greaterThanEqual_Number_1__Number_1__Boolean_1_
+                 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:true, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:true, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  Merge
+                    [
+                      0 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                      0 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                    ]
+''               *>Isolation: 
+                 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:true, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:true, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  Merge(hasIsolations:false)
+                    [
+                      0 select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                      0 select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                    ]
+''                    (A): select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year")))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+                    (Q): select greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  Merge Result: select group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year"))), greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''and'
+'            >End Process Function Expression: and_Boolean_1__Boolean_1__Boolean_1_
+              select group(and(group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year"))), greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year"))))
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''         >End Process Function Expression: join_Relation_1__Relation_1__JoinKind_1__Function_1__Relation_1_
+           select "tdsJoined__d_fd_d"."worker_id" as "worker_id", "tdsJoined__d_fd_d"."ratings_year" as "ratings_year", "tdsJoined__d_fd_d"."worker_id2" as "worker_id2", "tdsJoined__d_fd_d"."year" as "year" from (select * from (select "dbAccessor_d_fd_d_d0_d#5"._id as "worker_id", year(adjust(now(), 1, YEARS)) as "ratings_year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5") as "joinleft__d_fd_d" left outer join (select "subselect"."_id" as "worker_id2", "subselect"."year" as "year" from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect") as "joinright__d_fd_d" on (group(and(group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year"))), greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")))))) as "tdsJoined__d_fd_d"
+                      >>>>> 
+                      }}}}} 
+                      $$$$$ 0
+''   >End Process Function Expression: LambdaFunction
+     select "tdsJoined__d_fd_d"."worker_id" as "worker_id", "tdsJoined__d_fd_d"."ratings_year" as "ratings_year", "tdsJoined__d_fd_d"."worker_id2" as "worker_id2", "tdsJoined__d_fd_d"."year" as "year" from (select * from (select "dbAccessor_d_fd_d_d0_d#5"._id as "worker_id", year(adjust(now(), 1, YEARS)) as "ratings_year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d0_d#5") as "joinleft__d_fd_d" left outer join (select "subselect"."_id" as "worker_id2", "subselect"."year" as "year" from (select distinct "dbAccessor_d_fd_d_d1_d#6"._id as "_id", year(adjust(now(), 1, YEARS)) as "year" from REPRO_WORKER_DATA.PERF_RATING_MILESTONED as "dbAccessor_d_fd_d_d1_d#6") as "subselect") as "joinright__d_fd_d" on (group(and(group(and(equal("joinleft__d_fd_d"."worker_id", "joinright__d_fd_d"."worker_id2"), lessThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year"))), greaterThanEqual("joinright__d_fd_d"."year", "joinleft__d_fd_d"."ratings_year", 4, "joinleft__d_fd_d"."worker_id", "joinleft__d_fd_d"."ratings_year", plus("joinright__d_fd_d"."worker_id2", "joinright__d_fd_d"."year")))))) as "tdsJoined__d_fd_d"
+                >>>>> 
+                }}}}} 
+                $$$$$ 0
+'[
+   'relational'
+   'H2SqlDialectExtension'
+   'lakehouse'
+]
+
+
+Execution error at (resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1066 column:7), "Unused format args. [6] arguments provided to expression "%s >= %s""
+1: resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1066 column:7
+
+Full Stack:
+    println(Any[*]):Nil[0]     <-     resource:/welcome.pure line:37 column:86
+    testViewGeneration():Boolean[1]     <-     resource:/welcome.pure line:37 column:64
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_data_product_transformation/accessPoint/tests/testPlanGeneration.pure line:22 column:3
+    generateDataProductImplementation(DataProduct[1], Boolean[1]):DataProductImplementation[1]     <-     resource:/core_data_product_transformation/accessPoint/tests/testPlanGeneration.pure line:22 column:16
+    generateDataProductImplementation(DataProduct[1], Boolean[1], Boolean[1]):DataProductImplementation[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:52 column:57
+    generateDataProductImplementation(DataProduct[1], Boolean[1], DebugContext[1], Boolean[1]):DataProductImplementation[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:58 column:57
+    new(Class<T>[1], String[1], KeyExpression[*]):T[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure lines:165c5-176c5
+    map(T[m], Function<{T[1]->V[1]}>[1]):V[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:167 column:59
+    generateAccessPointGroup(AccessPointGroup[1], DataProduct[1], Boolean[1], DebugContext[1], Boolean[1]):AccessPointGroup[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:167 column:129
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:462 column:9
+    generateDefaultAccessPointGroup(AccessPointGroup[1], DataProduct[1], Boolean[1], DebugContext[1]):AccessPointGroup[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:465 column:97
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:472 column:3
+    map(T[m], Function<{T[1]->V[1]}>[1]):V[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:474 column:39
+    generateAccessPointImplementations(AccessPoint[1], DataProduct[1], DebugContext[1], Boolean[1]):AccessPointImplementation[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:474 column:107
+    new(Class<T>[1], String[1], KeyExpression[*]):T[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure lines:655c5-690c5
+    new(Class<T>[1], String[1], KeyExpression[*]):T[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure lines:661c25-689c7
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:684 column:23
+    generateDbObject(ImplementationType[1], LakehouseAccessPoint[1], DataProduct[1], DebugContext[1], Boolean[1]):String[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:686 column:245
+    eval(Function<{S[n], T[o], U[p], W[q], X[r], Y[s], Z[t]->V[m]}>[1], S[n], T[o], U[p], W[q], X[r], Y[s], Z[t]):V[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:717 column:139
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:750 column:3
+    executionPlan(FunctionDefinition<Any>[1], Extension[*], DebugContext[1]):ExecutionPlan[1]     <-     resource:/core_data_product_transformation/accessPoint/accessPointGeneration.pure line:750 column:45
+    executionPlan(FunctionDefinition<Any>[1], ExecutionContext[1], Extension[*], DebugContext[1]):ExecutionPlan[1]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:32 column:8
+    executionPlan(FunctionDefinition<Any>[1], FunctionDefinition<Any>[1], Mapping[1], Runtime[1], ExecutionContext[1], Extension[*], DebugContext[1]):ExecutionPlan[1]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:155 column:31
+    executionPlan(ClusteredValueSpecification[*], FunctionDefinition<Any>[1], FunctionDefinition<Any>[1], Mapping[1], Runtime[1], ExecutionContext[1], Map<String, List<Any>>[1], Extension[*], DebugContext[1]):ExecutionPlan[1]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:171 column:31
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:178 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:178 column:15
+    plan(ClusteredValueSpecification[1], Map<String, List<Any>>[1], ExecutionContext[1], Extension[*], DebugContext[1]):ExecutionNode[1]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:180 column:28
+    generateExecutionNodeFromCluster(ClusteredValueSpecification[1], Map<String, List<Any>>[1], ExecutionContext[1], Extension[*], DebugContext[1]):ExecutionNode[1]     <-     resource:/core/pure/executionPlan/executionPlan_generation.pure line:287 column:14
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core/pure/router/metamodel/clustering.pure line:45 column:13
+    buildExecutionNodeForStoreClusteredVS(StoreClusteredValueSpecification[1], ValueSpecification[1], Mapping[0..1], Map<String, List<Any>>[1], ExecutionContext[1], Extension[*], DebugContext[1]):ExecutionNode[1]     <-     resource:/core/pure/router/metamodel/clustering.pure line:53 column:16
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core/pure/router/metamodel/clustering.pure line:78 column:5
+    eval(Function<{S[n], T[o], U[p], W[q], X[r], Y[s], Z[t]->V[m]}>[1], S[n], T[o], U[p], W[q], X[r], Y[s], Z[t]):V[m]     <-     resource:/core/pure/router/metamodel/clustering.pure line:78 column:45
+    if(Pair<Function<{->Boolean[1]}>, Function<{->T[m]}>>[*], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/contract/storeContract.pure line:229 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/platform/pure/essential/lang/flow/if.pure line:27 column:3
+    eval(Function<{->V[m]}>[1]):V[m]     <-     resource:/platform/pure/essential/lang/flow/if.pure line:28 column:14
+    generateExecutionNodeForPostProcessedResult(PostProcessorResult[1], StoreQuery[1], Database[1], RoutedValueSpecification[0..1], Mapping[0..1], Runtime[1], ExecutionContext[1], DebugContext[1], Extension[*]):ExecutionNode[1]     <-     resource:/core_relational/relational/contract/storeContract.pure line:260 column:29
+    generateExecutionNodeForPostProcessedResult(PostProcessorResult[1], StoreQuery[1], Database[1], RoutedValueSpecification[0..1], Mapping[0..1], Runtime[1], ExecutionContext[1], DebugContext[1], Boolean[1], Extension[*]):ExecutionNode[1]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:54 column:4
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:59 column:4
+    generateSQLExecutionNode(SQLQuery[1], DatabaseConnection[1], String[*], Extension[*]):SQLExecutionNode[1]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:59 column:18
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:212 column:4
+    toSqlString(SQLQuery[1], DatabaseConnection[1], Boolean[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:212 column:14
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:425 column:3
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:430 column:7
+    sqlQueryToString(SQLQuery[1], DatabaseType[1], String[0..1], Boolean[0..1], Extension[*]):String[1]     <-     resource:/core_relational/relational/relationalMappingExecution.pure line:432 column:11
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:400 column:3
+    sqlQueryToString(SQLQuery[1], DatabaseType[1], String[0..1], Boolean[0..1], Format[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:402 column:7
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:417 column:3
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:419 column:7
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], GenerationState[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:459 column:4
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:475 column:33
+    processSelectSQLQuery(SelectSQLQuery[1], SqlGenerationContext[1], Boolean[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:512 column:68
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:591 column:4
+    Qualified Property selectSQLQueryProcessor(SelectSQLQuery[1],SqlGenerationContext[1],Boolean[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:599 column:22
+    plus(String[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:122 column:11
+    eval(Function<{T[n], U[p], W[q]->V[m]}>[1], T[n], U[p], W[q]):V[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:122 column:56
+    processSelectSQLQueryForSnowflake(SelectSQLQuery[1], DbConfig[1], Format[1], Config[1], Boolean[1], Extension[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:629 column:8
+    plus(String[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:650 column:171
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:640 column:3
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:642 column:7
+    processJoinTreeNode(RelationalTreeNode[1], TableAlias[0..1], DbConfig[1], Format[1], JoinType[*], Extension[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:642 column:39
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:466 column:4
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:466 column:29
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:471 column:51
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], GenerationState[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:454 column:4
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:475 column:33
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:488 column:49
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:488 column:91
+    processSelectSQLQuery(SelectSQLQuery[1], SqlGenerationContext[1], Boolean[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:491 column:78
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:591 column:4
+    Qualified Property selectSQLQueryProcessor(SelectSQLQuery[1],SqlGenerationContext[1],Boolean[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:599 column:22
+    plus(String[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:122 column:11
+    eval(Function<{T[n], U[p], W[q]->V[m]}>[1], T[n], U[p], W[q]):V[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:122 column:56
+    processSelectSQLQueryForSnowflake(SelectSQLQuery[1], DbConfig[1], Format[1], Config[1], Boolean[1], Extension[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:629 column:8
+    plus(String[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:650 column:171
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:640 column:3
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:642 column:7
+    processJoinTreeNode(RelationalTreeNode[1], TableAlias[0..1], DbConfig[1], Format[1], JoinType[*], Extension[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:642 column:39
+    joinStrings(String[*], String[1], String[1], String[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:483 column:134
+    map(T[m], Function<{T[1]->V[1]}>[1]):V[m]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:483 column:15
+    processJoinTreeNode(RelationalTreeNode[1], TableAlias[0..1], DbConfig[1], Format[1], JoinType[*], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:483 column:27
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:466 column:4
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:466 column:29
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:473 column:46
+    Qualified Property joinProcessor(JoinTreeNode[1],DbConfig[1],Format[1],Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/extensionDefaults.pure line:475 column:58
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:107 column:6
+    eval(Function<{T[n], U[p], W[q], X[r]->V[m]}>[1], T[n], U[p], W[q], X[r]):V[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:107 column:201
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:120 column:14
+    plus(String[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:145 column:132
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational_snowflake/relational/sqlQueryToString/snowflakeExtension.pure line:145 column:42
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], GenerationState[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:459 column:4
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:475 column:33
+    processDynaFunction(DynaFunction[1], SqlGenerationContext[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:524 column:61
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:861 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:864 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:867 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:870 column:5
+    Qualified Property toSql(RelationalOperationElement[*],SqlGenerationContext[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:890 column:26
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1058 column:7
+    map(T[m], Function<{T[1]->V[1]}>[1]):V[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1058 column:54
+    processOperation(RelationalOperationElement[1], SqlGenerationContext[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1058 column:72
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], GenerationState[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:469 column:33
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:475 column:33
+    processDynaFunction(DynaFunction[1], SqlGenerationContext[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:524 column:61
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:861 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:864 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:867 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:870 column:5
+    Qualified Property toSql(RelationalOperationElement[*],SqlGenerationContext[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:890 column:26
+    letFunction(String[1], T[m]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1058 column:7
+    map(T[m], Function<{T[1]->V[1]}>[1]):V[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1058 column:54
+    processOperation(RelationalOperationElement[1], SqlGenerationContext[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1058 column:72
+    processOperation(RelationalOperationElement[1], DbConfig[1], Format[1], GenerationState[1], Config[1], Extension[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:469 column:33
+    match(Any[*], Function<{Nil[n]->T[m]}>[1..*]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:475 column:33
+    processDynaFunction(DynaFunction[1], SqlGenerationContext[1]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:524 column:61
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:861 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:864 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:867 column:4
+    if(Boolean[1], Function<{->T[m]}>[1], Function<{->T[m]}>[1]):T[m]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:870 column:5
+    Qualified Property toSql(RelationalOperationElement[*],SqlGenerationContext[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:890 column:26
+    format(String[1], Any[*]):String[1]     <-     resource:/core_relational/relational/sqlQueryToString/dbExtension.pure line:1066 column:7
