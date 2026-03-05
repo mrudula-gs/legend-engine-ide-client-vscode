@@ -1,7 +1,1682 @@
-I was able to recreate the issue withthis query
-let result1 = meta::pure::executionPlan::executionPlan(|Holdable.all(%2018-02-28)->project([p|<span>p.person.roadVehicles->subType(@Car).description, p|</span>p.person.roadVehicles->subType(@Bicycle).description], ['descC', 'descB']), assocMapping3, meta::external::store::relational::tests::testRuntime(), meta::relational::extension::relationalExtensions());
-// This test projects multiple subType properties through a chained navigation // (Holdable -> Person -> roadVehicles) which is closer to the original issue // with SwapAttributes where multiple leg types (InterestLeg, FeeLeg, etc.) caused duplicates
-now before my fix sql was :
-select "unionalias_0"."Carc_Description___SQLNULL__" as "descC", "unionalias_0"."SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "person_0" on ("person_0".ID = "root".ID) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL", null as "SQLNULL___Bicycleb_Description" from Car as "root" union all select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionalias_0" on ("person_0".ID = "unionalias_0".c_PersonID_0 or "person_0".ID = "unionalias_0".b_PersonID_1)
-and after fix it is,
-select "car_0".c_Description as "descC", "bicycle_0".b_Description as "descB" from Holdable as "root" left outer join Person as "person_0" on ("person_0".ID = "root".ID) left outer join Car as "car_0" on ("person_0".ID = "car_0".c_PersonID) left outer join Bicycle as "bicycle_0" on ("person_0".ID = "bicycle_0".b_PersonID)
+for this test,
+
+ let result1 = meta::pure::executionPlan::executionPlan(|Holdable.all(%2018-02-28)->project([p|$p.person.roadVehicles->subType(@Car).description, p|$p.person.roadVehicles->subType(@Bicycle).description], ['descC', 'descB']), assocMapping3, meta::external::store::relational::tests::testRuntime(), meta::relational::extension::relationalExtensions());
+  let sql = $result1->planToString(meta::relational::extension::relationalExtensions());
+
+This is the debug log prior to adding the change which was adding FunctionRoutedValueSpecification to the match expression in propagateSubTypeConditional
+
+
+Enriching Function Expressions with relevant info (mapping / binding / platform) and assigning routing strategy:
+''FunctionDefinition : meta::pure::tds::project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_
+''  NativeFunction : meta::pure::functions::collection::getAll_Class_1__Date_1__T_MANY_
+''    Looking for:"Holdable"'' -> Not Found
+''    ~>C) (1) [1 hold1/Class Holdable]
+''  ~>NQS) (1) [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)]
+''  Processing Lambda
+''      NativeFunction : meta::pure::functions::collection::map_T_m__Function_1__V_m_
+''        FunctionDefinition : meta::pure::functions::lang::subType_Any_m__T_1__T_m_
+''          NativeFunction : meta::pure::functions::collection::map_T_MANY__Function_1__V_MANY_
+''             Property: person
+''            Variable:$p
+''            ~>V) (1) [1 hold1/$p]
+''            $p.person
+''            Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)person"'' -> Not Found
+''            ~>FEP)[2 per1/[1 hold1/$p].person]
+''            Processing Lambda
+''                 Property: roadVehicles
+''                Variable:$v_automap
+''                ~>V) (2) [2 per1/$v_automap]
+''                $v_automap.roadVehicles
+''                Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB),map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())roadVehicles"'' -> Not Found
+''                ~>FEP)[3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''          ~>NQS) (3) [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/[1 hold1/$p].person] -> map([3 meta_relational_tests_model_inheritance_RoadVehicle/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]
+''          Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)Car"'' -> Not Found
+''          ~>C) (4) [4 map1/]
+''        ~>NQS) (4) [4 map1/[4 map1/[2 per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])]
+''        Processing Lambda
+''             Property: description
+''            Variable:$v_automap
+''            ~>V) (4) [4 map1/$v_automap]
+''            $v_automap.description
+''            ~>FEP)[4 map1/[4 map1/$v_automap].description]
+''      ~>NQS) (4) [4 map1/[4 map1/[4 map1/[2 per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 map1/[4 map1/$v_automap].description];]])]
+''  Processing Lambda
+''      NativeFunction : meta::pure::functions::collection::map_T_m__Function_1__V_m_
+''        FunctionDefinition : meta::pure::functions::lang::subType_Any_m__T_1__T_m_
+''          NativeFunction : meta::pure::functions::collection::map_T_MANY__Function_1__V_MANY_
+''             Property: person
+''            Variable:$p
+''            ~>V) (4) [1 hold1/$p]
+''            $p.person
+''            Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)person"'' -> Found : 2
+''            ~>FEP)[2 per1/[1 hold1/$p].person]
+''            Processing Lambda
+''                 Property: roadVehicles
+''                Variable:$v_automap
+''                ~>V) (4) [2 per1/$v_automap]
+''                $v_automap.roadVehicles
+''                Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB),map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())roadVehicles"'' -> Found : 3
+''                ~>FEP)[3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''          ~>NQS) (4) [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/[1 hold1/$p].person] -> map([3 meta_relational_tests_model_inheritance_RoadVehicle/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]
+''          Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)Bicycle"'' -> Not Found
+''          ~>C) (5) [5 map2/]
+''        ~>NQS) (5) [5 map2/[5 map2/[2 per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])]
+''        Processing Lambda
+''             Property: description
+''            Variable:$v_automap
+''            ~>V) (5) [5 map2/$v_automap]
+''            $v_automap.description
+''            ~>FEP)[5 map2/[5 map2/$v_automap].description]
+''      ~>NQS) (5) [5 map2/[5 map2/[5 map2/[2 per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 map2/[5 map2/$v_automap].description];]])]
+''~>NQS) (5) [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])
+''
+Enriching Function Expressions with strategy based info (mapping / binding / platform):
+''
+Sets found:
+''   [1|hold1]
+   [2|per1]
+   [3|meta_relational_tests_model_inheritance_RoadVehicle]
+   [4|map1]
+   [5|map2]
+''
+Process Permutations (5)
+''   [1|hold1],    [2|per1],    [3|meta_relational_tests_model_inheritance_RoadVehicle],    [4|map1],    [5|map2]
+''
+Building new queries
+''  Query 0
+''  Looking up propertyMapping for property "person" from "hold1" to "[per1]"'' -> Found: 1'
+'  Looking up propertyMapping for property "roadVehicles" from "per1" to "[map1]"'' -> Found: 1''  Looking up propertyMapping for property "roadVehicles" from "per1" to "[map2]"'' -> Found: 1'
+'   Looking up propertyMapping for property "description" in "map1" 
+''  propertyMappings found "1" 
+''  Looking up propertyMapping for property "person" from "hold1" to "[per1]"'' -> Found: 1'
+'  Looking up propertyMapping for property "roadVehicles" from "per1" to "[map1]"'' -> Found: 1''  Looking up propertyMapping for property "roadVehicles" from "per1" to "[map2]"'' -> Found: 1'
+'   Looking up propertyMapping for property "description" in "map2" 
+''  propertyMappings found "1" 
+''
+Built queries:1
+''   - [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]
+''
+Filtered Built queries:1
+''
+Clustering Function Expressions:''
+  Processing: [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]
+''  Routed: [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]
+''     Routed: [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)]
+''        Routed: [1 hold1/Class Holdable]
+''           Constant: Class Holdable
+''             ~> Class Holdable
+''        ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/Class Holdable]}
+''        Constant: 2018-02-28
+''          ~> 2018-02-28
+''        Func Expression(merge): [1 hold1/Class Holdable].all(2018-02-28)
+''     ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)]}
+''     Constant: [[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]]
+''
+         Processing: [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])]
+''           Routed: [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])]
+''              Routed: [4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])]
+''                 Routed: [4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]
+''                    Routed: [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]
+''                       Routed: [1 hold1/$p]
+''                          Var: $p
+''                       ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/$p]}
+''                       Func Expression(merge): [1 hold1/$p].person
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]}
+''                    Routed: [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]]
+''
+                         Processing: [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''                           Routed: [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''                              Routed: [2 per1/$v_automap]
+''                                 Var: $v_automap
+''                              ~> {meta::relational::tests::mapping::inheritance::myDB> [2 per1/$v_automap]}
+''                              Func Expression(merge): [2 per1/$v_automap].roadVehicles
+''                           ~> {meta::relational::tests::mapping::inheritance::myDB> [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]}
+''                         Func: v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];
+''                         ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];}
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]]}
+''                    Func Expression(merge): [2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]}
+''                 Routed: [4 map1/]
+''                    Constant: 
+''                      ~> 
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/]}
+''                 Func Expression(merge): [4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])]}
+''              Routed: [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]]
+''
+                   Processing: [4 @description(map1->)@ map1/[4 map1/$v_automap].description]
+''                     Routed: [4 @description(map1->)@ map1/[4 map1/$v_automap].description]
+''                        Routed: [4 map1/$v_automap]
+''                           Var: $v_automap
+''                        ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/$v_automap]}
+''                        Func Expression(merge): [4 map1/$v_automap].description
+''                     ~> {meta::relational::tests::mapping::inheritance::myDB> [4 @description(map1->)@ map1/[4 map1/$v_automap].description]}
+''                   Func: v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];
+''                   ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];}
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]]}
+''              Func Expression(merge): [4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])
+''           ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])]}
+''         Func: p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];
+''         ~> {meta::relational::tests::mapping::inheritance::myDB> p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];}
+''
+         Processing: [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])]
+''           Routed: [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])]
+''              Routed: [5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])]
+''                 Routed: [5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]
+''                    Routed: [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]
+''                       Routed: [1 hold1/$p]
+''                          Var: $p
+''                       ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/$p]}
+''                       Func Expression(merge): [1 hold1/$p].person
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]}
+''                    Routed: [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]]
+''
+                         Processing: [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''                           Routed: [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''                              Routed: [2 per1/$v_automap]
+''                                 Var: $v_automap
+''                              ~> {meta::relational::tests::mapping::inheritance::myDB> [2 per1/$v_automap]}
+''                              Func Expression(merge): [2 per1/$v_automap].roadVehicles
+''                           ~> {meta::relational::tests::mapping::inheritance::myDB> [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]}
+''                         Func: v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];
+''                         ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];}
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]]}
+''                    Func Expression(merge): [2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]}
+''                 Routed: [5 map2/]
+''                    Constant: 
+''                      ~> 
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/]}
+''                 Func Expression(merge): [5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])]}
+''              Routed: [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]]
+''
+                   Processing: [5 @description(map2->)@ map2/[5 map2/$v_automap].description]
+''                     Routed: [5 @description(map2->)@ map2/[5 map2/$v_automap].description]
+''                        Routed: [5 map2/$v_automap]
+''                           Var: $v_automap
+''                        ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/$v_automap]}
+''                        Func Expression(merge): [5 map2/$v_automap].description
+''                     ~> {meta::relational::tests::mapping::inheritance::myDB> [5 @description(map2->)@ map2/[5 map2/$v_automap].description]}
+''                   Func: v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];
+''                   ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];}
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]]}
+''              Func Expression(merge): [5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])
+''           ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])]}
+''         Func: p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];
+''         ~> {meta::relational::tests::mapping::inheritance::myDB> p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];}
+''       ~> {meta::relational::tests::mapping::inheritance::myDB> [[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]]}
+''     Constant: ['descC', 'descB']
+''       ~> ['descC', 'descB']
+''     Func Expression(merge): [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])
+''  ~> {meta::relational::tests::mapping::inheritance::myDB> [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]}
+'' | {meta::relational::tests::mapping::inheritance::myDB> [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]};
+''
+Generating Execution Plan:
+''Generating plan for cluster: {meta::relational::tests::mapping::inheritance::myDB> [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 @roadVehicles(per1->map1),roadVehicles(per1->map2)@ meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]}
+''   >Process Function Expression: project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_
+''      >Process Function Expression using supported function: processProjectFunctions_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''      *>Process Project: 'Function', 'Function'
+         (P)Source Operation>  select *
+''         >Process Function Expression: getAll_Class_1__Date_1__T_MANY_
+''            >Process Function Expression using supported function: processGetAll_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''               Merge
+                 [
+                   0 select "root".ID as "pk_0" from Holdable as "root"
+                   0 select * from Holdable as "root"
+                 ]
+''            *>Isolation: 
+              select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''              ? false / State isolation:false, Isolation required (filter or inner joins):false
+''            *>Isolation Result: 
+              select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''            *>Isolation: 
+              select * from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''              ? false / State isolation:false, Isolation required (filter or inner joins):false
+''            *>Isolation Result: 
+              select * from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''               Merge(hasIsolations:false)
+                 [
+                   0 select "root".ID as "pk_0" from Holdable as "root"
+                   0 select * from Holdable as "root"
+                 ]
+''                 (A): select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+                 (Q): select * from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''               Merge Result: select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''         >End Process Function Expression: getAll_Class_1__Date_1__T_MANY_
+           select "root".ID as "pk_0", '2018-02-28' as "k_businessDate" from Holdable as "root"
+                      >>>>> 
+                      }}}}} 
+                      $$$$$ 0
+''         (M)Main Select>  select "root".ID as "pk_0", '2018-02-28' as "k_businessDate" from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         (M)Clean Up Query>  select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select "root".ID from Holdable as "root"
+           ]
+''      *>Isolation: 
+        select "root".ID from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "root".ID from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select "root".ID from Holdable as "root"
+           ]
+''         Merge Result: select "root".ID from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''            >Process Function Expression: map_T_m__Function_1__V_m_
+''               >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''               >Process Function Expression: subType_Any_m__T_1__T_m_
+''                  >Process Function Expression using supported function: processNoOp_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: map_T_MANY__Function_1__V_MANY_
+''                     >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''                     >Process Function Expression: person
+''                        >Process Property Function Expression: person, property owner:Holdable, inFilter:false
+''                           >Process Variable Expression, name:p
+''                           Result of Variable Expression, name:p - select * from Holdable as "root"
+''                           *>Process Property: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                              (Q)Source Operation>  select * from Holdable as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                              *>Isolation: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                              *>Isolation Result: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                           <*Process Property Result: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                     >End Process Function Expression: person
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        >Process Function Expression: roadVehicles
+''                           >Process Property Function Expression: roadVehicles, property owner:Person, inFilter:false
+''                              >Process Variable Expression, name:v_automap
+''                              Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+''                              *>Process Property: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map1,meta_relational_tests_model_inheritance_Driver->map2) _d#5_f_d,inFilter:false
+                                 (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                 *>Build SQL query out many set implementations (and join) (propertyMappings:2):
+''                                   - sourceSetImplIds: [per1]
+                                   - targetSetImplIds: [map1,map2]
+''                                   - build new Union (using processGetAll)
+''                                    Merge
+                                      [
+                                        0 select * from Car as "root"
+                                        0 select * from Car as "root"
+                                      ]
+''                                 *>Isolation: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge(hasIsolations:false)
+                                      [
+                                        0 select * from Car as "root"
+                                        0 select * from Car as "root"
+                                      ]
+''                                      (A): select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+                                      (Q): select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge Result: select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge
+                                      [
+                                        0 select * from Bicycle as "root"
+                                        0 select * from Bicycle as "root"
+                                      ]
+''                                 *>Isolation: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge(hasIsolations:false)
+                                      [
+                                        0 select * from Bicycle as "root"
+                                        0 select * from Bicycle as "root"
+                                      ]
+''                                      (A): select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+                                      (Q): select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge Result: select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   - build new JoinTreeNode
+''                                      [Before]: PersonCar(equal("Person".ID, "Car".c_PersonID))[]
+''                                      [After]: PersonCar(equal("Person_d#7".ID, "unionAlias".c_PersonID_0))[]
+''                                      [Before]: PersonBicycle(equal("Person".ID, "Bicycle".b_PersonID))[]
+''                                      [After]: PersonBicycle(equal("Person_d#7".ID, "unionAlias".b_PersonID_1))[]
+''                                   - Merging 2 JoinTreeNodes
+''                                      [Merged]: PersonCar(or(equal("Person_d#7".ID, "unionAlias".c_PersonID_0), equal("Person_d#7".ID, "unionAlias".b_PersonID_1)))[]
+''                                 *>Replace Join Table With Select: 
+                                    (Q)Base Select Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    (R)New Select Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+''                              <*Process Property Result: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map1,meta_relational_tests_model_inheritance_Driver->map2) _d#5_f_d,inFilter:false
+                                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                        >End Process Function Expression: roadVehicles
+                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: map_T_MANY__Function_1__V_MANY_
+                    select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''               >End Process Function Expression: subType_Any_m__T_1__T_m_
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:false, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  >Process Function Expression: description
+''                     >Process Property Function Expression: description, property owner:Car, inFilter:false
+''                        >Process Variable Expression, name:v_automap
+''                        Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+''                        *>Process Property: 'description' (map1->) _d#2_f_d,inFilter:false
+                           (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                           *>Process Property: 'description' (map1->) _d#2_f_d,inFilter:false
+                              (Q)Source Operation>  select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                           <*Process Property Result: 'description' (map1->) _d#2_f_d,inFilter:false
+                                       select "root".c_Description from Car as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                        <*Process Property Result: 'description' (map1->) _d#2_f_d,inFilter:false
+                                    select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: description
+                    select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''            >End Process Function Expression: map_T_m__Function_1__V_m_
+              select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''            >Process Function Expression: map_T_m__Function_1__V_m_
+''               >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''               >Process Function Expression: subType_Any_m__T_1__T_m_
+''                  >Process Function Expression using supported function: processNoOp_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: map_T_MANY__Function_1__V_MANY_
+''                     >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''                     >Process Function Expression: person
+''                        >Process Property Function Expression: person, property owner:Holdable, inFilter:false
+''                           >Process Variable Expression, name:p
+''                           Result of Variable Expression, name:p - select * from Holdable as "root"
+''                           *>Process Property: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                              (Q)Source Operation>  select * from Holdable as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                              *>Isolation: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                              *>Isolation Result: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                           <*Process Property Result: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                     >End Process Function Expression: person
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        >Process Function Expression: roadVehicles
+''                           >Process Property Function Expression: roadVehicles, property owner:Person, inFilter:false
+''                              >Process Variable Expression, name:v_automap
+''                              Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+''                              *>Process Property: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map1,meta_relational_tests_model_inheritance_Driver->map2) _d#5_f_d,inFilter:false
+                                 (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                 *>Build SQL query out many set implementations (and join) (propertyMappings:2):
+''                                   - sourceSetImplIds: [per1]
+                                   - targetSetImplIds: [map1,map2]
+''                                   - build new Union (using processGetAll)
+''                                    Merge
+                                      [
+                                        0 select * from Car as "root"
+                                        0 select * from Car as "root"
+                                      ]
+''                                 *>Isolation: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge(hasIsolations:false)
+                                      [
+                                        0 select * from Car as "root"
+                                        0 select * from Car as "root"
+                                      ]
+''                                      (A): select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+                                      (Q): select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge Result: select * from Car as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge
+                                      [
+                                        0 select * from Bicycle as "root"
+                                        0 select * from Bicycle as "root"
+                                      ]
+''                                 *>Isolation: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                 *>Isolation: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge(hasIsolations:false)
+                                      [
+                                        0 select * from Bicycle as "root"
+                                        0 select * from Bicycle as "root"
+                                      ]
+''                                      (A): select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+                                      (Q): select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    Merge Result: select * from Bicycle as "root"
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   - build new JoinTreeNode
+''                                      [Before]: PersonCar(equal("Person".ID, "Car".c_PersonID))[]
+''                                      [After]: PersonCar(equal("Person_d#7".ID, "unionAlias".c_PersonID_0))[]
+''                                      [Before]: PersonBicycle(equal("Person".ID, "Bicycle".b_PersonID))[]
+''                                      [After]: PersonBicycle(equal("Person_d#7".ID, "unionAlias".b_PersonID_1))[]
+''                                   - Merging 2 JoinTreeNodes
+''                                      [Merged]: PersonCar(or(equal("Person_d#7".ID, "unionAlias".c_PersonID_0), equal("Person_d#7".ID, "unionAlias".b_PersonID_1)))[]
+''                                 *>Replace Join Table With Select: 
+                                    (Q)Base Select Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                    (R)New Select Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+''                              <*Process Property Result: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map1,meta_relational_tests_model_inheritance_Driver->map2) _d#5_f_d,inFilter:false
+                                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                        >End Process Function Expression: roadVehicles
+                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: map_T_MANY__Function_1__V_MANY_
+                    select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''               >End Process Function Expression: subType_Any_m__T_1__T_m_
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:false, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  >Process Function Expression: description
+''                     >Process Property Function Expression: description, property owner:Bicycle, inFilter:false
+''                        >Process Variable Expression, name:v_automap
+''                        Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+''                        *>Process Property: 'description' (map2->) _d#2_f_d,inFilter:false
+                           (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1 from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                           *>Process Property: 'description' (map2->) _d#2_f_d,inFilter:false
+                              (Q)Source Operation>  select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1 from Bicycle as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                           <*Process Property Result: 'description' (map2->) _d#2_f_d,inFilter:false
+                                       select "root".b_Description from Bicycle as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                        <*Process Property Result: 'description' (map2->) _d#2_f_d,inFilter:false
+                                    select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: description
+                    select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''            >End Process Function Expression: map_T_m__Function_1__V_m_
+              select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''      *>Isolation: 
+        select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select * from Holdable as "root"
+             0 select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+             0 select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+           ]
+''      *>Isolation: 
+        select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select * from Holdable as "root"
+             0 select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+             0 select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+           ]
+''           (A): select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select "unionAlias_d#5_f_d"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''           (A): select "unionAlias_d#5_f_d_d_m1_r"."Carc_Description___SQLNULL__" as "descC" from Holdable as "root" left outer join Person as "Person_d#7_d_m1" on (equal("Person_d#7_d_m1".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root") as "unionAlias_d#5_f_d_d_m1_r" on (or(equal("Person_d#7_d_m1".ID, "unionAlias_d#5_f_d_d_m1_r".c_PersonID_0), equal("Person_d#7_d_m1".ID, "unionAlias_d#5_f_d_d_m1_r".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select "unionAlias_d#5_f_d"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d" on (or(equal("Person_d#7".ID, "unionAlias_d#5_f_d".c_PersonID_0), equal("Person_d#7".ID, "unionAlias_d#5_f_d".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root"
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+           ]
+''      *>Isolation: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root"
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+           ]
+''           (A): select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge Result: select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root"
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+           ]
+''      *>Isolation: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root"
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+           ]
+''           (A): select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge Result: select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+           ]
+''      *>Isolation: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+             0 select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+           ]
+''           (A): select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge Result: select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+           ]
+''      *>Isolation: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+             0 select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+           ]
+''           (A): select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge Result: select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge Result: select "unionAlias_d#5_f_d_d_m1_r"."Carc_Description___SQLNULL__" as "descC", "unionAlias_d#5_f_d_d_m1_r"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7_d_m1" on (equal("Person_d#7_d_m1".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d_d_m1_r" on (or(equal("Person_d#7_d_m1".ID, "unionAlias_d#5_f_d_d_m1_r".c_PersonID_0), equal("Person_d#7_d_m1".ID, "unionAlias_d#5_f_d_d_m1_r".b_PersonID_1)))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''   >End Process Function Expression: project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_
+     select "unionAlias_d#5_f_d_d_m1_r"."Carc_Description___SQLNULL__" as "descC", "unionAlias_d#5_f_d_d_m1_r"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "Person_d#7_d_m1" on (equal("Person_d#7_d_m1".ID, "root".ID)) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root" UNION ALL select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionAlias_d#5_f_d_d_m1_r" on (or(equal("Person_d#7_d_m1".ID, "unionAlias_d#5_f_d_d_m1_r".c_PersonID_0), equal("Person_d#7_d_m1".ID, "unionAlias_d#5_f_d_d_m1_r".b_PersonID_1)))
+                >>>>> 
+                }}}}} 
+                $$$$$ 0
+'[
+   'relational'
+   'H2SqlDialectExtension'
+]
+'Generated SQL Node with query: select "unionalias_0"."Carc_Description___SQLNULL__" as "descC", "unionalias_0"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "person_0" on ("person_0".ID = "root".ID) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root" union all select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionalias_0" on ("person_0".ID = "unionalias_0".c_PersonID_0 or "person_0".ID = "unionalias_0".b_PersonID_1)
+''Relational
+(
+  type = TDS[(descC, String, VARCHAR(200), ""), (descB, String, VARCHAR(200), "")]
+  resultColumns = [("descC", VARCHAR(200)), ("descB", VARCHAR(200))]
+  sql = select "unionalias_0"."Carc_Description___SQLNULL__" as "descC", "unionalias_0"."__SQLNULL___Bicycleb_Description" as "descB" from Holdable as "root" left outer join Person as "person_0" on ("person_0".ID = "root".ID) left outer join (select "root".c_PersonID as c_PersonID_0, null as b_PersonID_1, "root".c_Description as "Carc_Description___SQLNULL__", null as "__SQLNULL___Bicycleb_Description" from Car as "root" union all select null as c_PersonID_0, "root".b_PersonID as b_PersonID_1, null as "Carc_Description___SQLNULL__", "root".b_Description as "__SQLNULL___Bicycleb_Description" from Bicycle as "root") as "unionalias_0" on ("person_0".ID = "unionalias_0".c_PersonID_0 or "person_0".ID = "unionalias_0".b_PersonID_1)
+  connection = TestDatabaseConnection(type = "H2")
+)
+'
+
+
+and this is after making that change,
+
+Enriching Function Expressions with relevant info (mapping / binding / platform) and assigning routing strategy:
+''FunctionDefinition : meta::pure::tds::project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_
+''  NativeFunction : meta::pure::functions::collection::getAll_Class_1__Date_1__T_MANY_
+''    Looking for:"Holdable"'' -> Not Found
+''    ~>C) (1) [1 hold1/Class Holdable]
+''  ~>NQS) (1) [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)]
+''  Processing Lambda
+''      NativeFunction : meta::pure::functions::collection::map_T_m__Function_1__V_m_
+''        FunctionDefinition : meta::pure::functions::lang::subType_Any_m__T_1__T_m_
+''          NativeFunction : meta::pure::functions::collection::map_T_MANY__Function_1__V_MANY_
+''             Property: person
+''            Variable:$p
+''            ~>V) (1) [1 hold1/$p]
+''            $p.person
+''            Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)person"'' -> Not Found
+''            ~>FEP)[2 per1/[1 hold1/$p].person]
+''            Processing Lambda
+''                 Property: roadVehicles
+''                Variable:$v_automap
+''                ~>V) (2) [2 per1/$v_automap]
+''                $v_automap.roadVehicles
+''                Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB),map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())roadVehicles"'' -> Not Found
+''                ~>FEP)[3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''          ~>NQS) (3) [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/[1 hold1/$p].person] -> map([3 meta_relational_tests_model_inheritance_RoadVehicle/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]
+''          Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)Car"'' -> Not Found
+''          ~>C) (4) [4 map1/]
+''        ~>NQS) (4) [4 map1/[4 map1/[2 per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])]
+''        Processing Lambda
+''             Property: description
+''            Variable:$v_automap
+''            ~>V) (4) [4 map1/$v_automap]
+''            $v_automap.description
+''            ~>FEP)[4 map1/[4 map1/$v_automap].description]
+''      ~>NQS) (4) [4 map1/[4 map1/[4 map1/[2 per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 map1/[4 map1/$v_automap].description];]])]
+''  Processing Lambda
+''      NativeFunction : meta::pure::functions::collection::map_T_m__Function_1__V_m_
+''        FunctionDefinition : meta::pure::functions::lang::subType_Any_m__T_1__T_m_
+''          NativeFunction : meta::pure::functions::collection::map_T_MANY__Function_1__V_MANY_
+''             Property: person
+''            Variable:$p
+''            ~>V) (4) [1 hold1/$p]
+''            $p.person
+''            Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)person"'' -> Found : 2
+''            ~>FEP)[2 per1/[1 hold1/$p].person]
+''            Processing Lambda
+''                 Property: roadVehicles
+''                Variable:$v_automap
+''                ~>V) (4) [2 per1/$v_automap]
+''                $v_automap.roadVehicles
+''                Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB),map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())map_T_MANY__Function_1__V_MANY_(person(),roadVehicles())roadVehicles"'' -> Found : 3
+''                ~>FEP)[3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles]
+''          ~>NQS) (4) [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/[1 hold1/$p].person] -> map([3 meta_relational_tests_model_inheritance_RoadVehicle/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [3 meta_relational_tests_model_inheritance_RoadVehicle/[2 per1/$v_automap].roadVehicles];]])]
+''          Looking for:"project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_(getAll_Class_1__Date_1__T_MANY_(Holdable,2018-02-28),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),map_T_m__Function_1__V_m_(subType_Any_m__T_1__T_m_(InstanceValue),description()),descC,descB)Bicycle"'' -> Not Found
+''          ~>C) (5) [5 map2/]
+''        ~>NQS) (5) [5 map2/[5 map2/[2 per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])]
+''        Processing Lambda
+''             Property: description
+''            Variable:$v_automap
+''            ~>V) (5) [5 map2/$v_automap]
+''            $v_automap.description
+''            ~>FEP)[5 map2/[5 map2/$v_automap].description]
+''      ~>NQS) (5) [5 map2/[5 map2/[5 map2/[2 per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 map2/[5 map2/$v_automap].description];]])]
+''~>NQS) (5) [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])
+''
+Enriching Function Expressions with strategy based info (mapping / binding / platform):
+''
+Sets found:
+''   [1|hold1]
+   [2|per1]
+   [3|meta_relational_tests_model_inheritance_RoadVehicle]
+   [4|map1]
+   [5|map2]
+''
+Process Permutations (5)
+''   [1|hold1],    [2|per1],    [3|meta_relational_tests_model_inheritance_RoadVehicle],    [4|map1],    [5|map2]
+''
+Building new queries
+''  Query 0
+''  Looking up propertyMapping for property "person" from "hold1" to "[per1]"'' -> Found: 1'
+'  Looking up propertyMapping for property "roadVehicles" from "per1" to "[map1]"'' -> Found: 1'
+'   Looking up propertyMapping for property "description" in "map1" 
+''  propertyMappings found "1" 
+''  Looking up propertyMapping for property "person" from "hold1" to "[per1]"'' -> Found: 1'
+'  Looking up propertyMapping for property "roadVehicles" from "per1" to "[map2]"'' -> Found: 1'
+'   Looking up propertyMapping for property "description" in "map2" 
+''  propertyMappings found "1" 
+''
+Built queries:1
+''   - [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]
+''
+Filtered Built queries:1
+''
+Clustering Function Expressions:''
+  Processing: [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]
+''  Routed: [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]
+''     Routed: [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)]
+''        Routed: [1 hold1/Class Holdable]
+''           Constant: Class Holdable
+''             ~> Class Holdable
+''        ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/Class Holdable]}
+''        Constant: 2018-02-28
+''          ~> 2018-02-28
+''        Func Expression(merge): [1 hold1/Class Holdable].all(2018-02-28)
+''     ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)]}
+''     Constant: [[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]]
+''
+         Processing: [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])]
+''           Routed: [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])]
+''              Routed: [4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])]
+''                 Routed: [4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])]
+''                    Routed: [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]
+''                       Routed: [1 hold1/$p]
+''                          Var: $p
+''                       ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/$p]}
+''                       Func Expression(merge): [1 hold1/$p].person
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]}
+''                    Routed: [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]]
+''
+                         Processing: [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles]
+''                           Routed: [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles]
+''                              Routed: [2 per1/$v_automap]
+''                                 Var: $v_automap
+''                              ~> {meta::relational::tests::mapping::inheritance::myDB> [2 per1/$v_automap]}
+''                              Func Expression(merge): [2 per1/$v_automap].roadVehicles
+''                           ~> {meta::relational::tests::mapping::inheritance::myDB> [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles]}
+''                         Func: v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];
+''                         ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];}
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]]}
+''                    Func Expression(merge): [2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])]}
+''                 Routed: [4 map1/]
+''                    Constant: 
+''                      ~> 
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/]}
+''                 Func Expression(merge): [4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])]}
+''              Routed: [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]]
+''
+                   Processing: [4 @description(map1->)@ map1/[4 map1/$v_automap].description]
+''                     Routed: [4 @description(map1->)@ map1/[4 map1/$v_automap].description]
+''                        Routed: [4 map1/$v_automap]
+''                           Var: $v_automap
+''                        ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/$v_automap]}
+''                        Func Expression(merge): [4 map1/$v_automap].description
+''                     ~> {meta::relational::tests::mapping::inheritance::myDB> [4 @description(map1->)@ map1/[4 map1/$v_automap].description]}
+''                   Func: v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];
+''                   ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];}
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]]}
+''              Func Expression(merge): [4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])
+''           ~> {meta::relational::tests::mapping::inheritance::myDB> [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])]}
+''         Func: p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];
+''         ~> {meta::relational::tests::mapping::inheritance::myDB> p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];}
+''
+         Processing: [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])]
+''           Routed: [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])]
+''              Routed: [5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])]
+''                 Routed: [5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])]
+''                    Routed: [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]
+''                       Routed: [1 hold1/$p]
+''                          Var: $p
+''                       ~> {meta::relational::tests::mapping::inheritance::myDB> [1 hold1/$p]}
+''                       Func Expression(merge): [1 hold1/$p].person
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [2 @person(hold1->per1)@ per1/[1 hold1/$p].person]}
+''                    Routed: [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]]
+''
+                         Processing: [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles]
+''                           Routed: [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles]
+''                              Routed: [2 per1/$v_automap]
+''                                 Var: $v_automap
+''                              ~> {meta::relational::tests::mapping::inheritance::myDB> [2 per1/$v_automap]}
+''                              Func Expression(merge): [2 per1/$v_automap].roadVehicles
+''                           ~> {meta::relational::tests::mapping::inheritance::myDB> [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles]}
+''                         Func: v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];
+''                         ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];}
+''                    ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]]}
+''                    Func Expression(merge): [2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])]}
+''                 Routed: [5 map2/]
+''                    Constant: 
+''                      ~> 
+''                 ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/]}
+''                 Func Expression(merge): [5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])]}
+''              Routed: [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]]
+''
+                   Processing: [5 @description(map2->)@ map2/[5 map2/$v_automap].description]
+''                     Routed: [5 @description(map2->)@ map2/[5 map2/$v_automap].description]
+''                        Routed: [5 map2/$v_automap]
+''                           Var: $v_automap
+''                        ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/$v_automap]}
+''                        Func Expression(merge): [5 map2/$v_automap].description
+''                     ~> {meta::relational::tests::mapping::inheritance::myDB> [5 @description(map2->)@ map2/[5 map2/$v_automap].description]}
+''                   Func: v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];
+''                   ~> {meta::relational::tests::mapping::inheritance::myDB> v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];}
+''              ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]]}
+''              Func Expression(merge): [5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])
+''           ~> {meta::relational::tests::mapping::inheritance::myDB> [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])]}
+''         Func: p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];
+''         ~> {meta::relational::tests::mapping::inheritance::myDB> p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];}
+''       ~> {meta::relational::tests::mapping::inheritance::myDB> [[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]]}
+''     Constant: ['descC', 'descB']
+''       ~> ['descC', 'descB']
+''     Func Expression(merge): [1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])
+''  ~> {meta::relational::tests::mapping::inheritance::myDB> [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]}
+'' | {meta::relational::tests::mapping::inheritance::myDB> [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]};
+''
+Generating Execution Plan:
+''Generating plan for cluster: {meta::relational::tests::mapping::inheritance::myDB> [strategy_wrapper /[1 hold1/[1 hold1/Class Holdable].all(2018-02-28)] -> project([[Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [4 map1/[4 map1/[4 map1/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [4 @roadVehicles(per1->map1)@ map1/[2 per1/$v_automap].roadVehicles];]])] -> subType([4 map1/])] -> map([4 map1/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Car[1] | [4 @description(map1->)@ map1/[4 map1/$v_automap].description];]])];], [Routed Func:p:meta::relational::tests::model::inheritance::Holdable[1] | [5 map2/[5 map2/[5 map2/[2 @person(hold1->per1)@ per1/[1 hold1/$p].person] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Person[1] | [5 @roadVehicles(per1->map2)@ map2/[2 per1/$v_automap].roadVehicles];]])] -> subType([5 map2/])] -> map([5 map2/[Routed Func:v_automap:meta::relational::tests::model::inheritance::Bicycle[1] | [5 @description(map2->)@ map2/[5 map2/$v_automap].description];]])];]], ['descC', 'descB'])]}
+''   >Process Function Expression: project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_
+''      >Process Function Expression using supported function: processProjectFunctions_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''      *>Process Project: 'Function', 'Function'
+         (P)Source Operation>  select *
+''         >Process Function Expression: getAll_Class_1__Date_1__T_MANY_
+''            >Process Function Expression using supported function: processGetAll_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''               Merge
+                 [
+                   0 select "root".ID as "pk_0" from Holdable as "root"
+                   0 select * from Holdable as "root"
+                 ]
+''            *>Isolation: 
+              select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''              ? false / State isolation:false, Isolation required (filter or inner joins):false
+''            *>Isolation Result: 
+              select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''            *>Isolation: 
+              select * from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''              ? false / State isolation:false, Isolation required (filter or inner joins):false
+''            *>Isolation Result: 
+              select * from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''               Merge(hasIsolations:false)
+                 [
+                   0 select "root".ID as "pk_0" from Holdable as "root"
+                   0 select * from Holdable as "root"
+                 ]
+''                 (A): select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+                 (Q): select * from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''               Merge Result: select "root".ID as "pk_0" from Holdable as "root"
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''         >End Process Function Expression: getAll_Class_1__Date_1__T_MANY_
+           select "root".ID as "pk_0", '2018-02-28' as "k_businessDate" from Holdable as "root"
+                      >>>>> 
+                      }}}}} 
+                      $$$$$ 0
+''         (M)Main Select>  select "root".ID as "pk_0", '2018-02-28' as "k_businessDate" from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         (M)Clean Up Query>  select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select "root".ID from Holdable as "root"
+           ]
+''      *>Isolation: 
+        select "root".ID from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "root".ID from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select "root".ID from Holdable as "root"
+           ]
+''         Merge Result: select "root".ID from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''            >Process Function Expression: map_T_m__Function_1__V_m_
+''               >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''               >Process Function Expression: subType_Any_m__T_1__T_m_
+''                  >Process Function Expression using supported function: processNoOp_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: map_T_MANY__Function_1__V_MANY_
+''                     >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''                     >Process Function Expression: person
+''                        >Process Property Function Expression: person, property owner:Holdable, inFilter:false
+''                           >Process Variable Expression, name:p
+''                           Result of Variable Expression, name:p - select * from Holdable as "root"
+''                           *>Process Property: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                              (Q)Source Operation>  select * from Holdable as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                              *>Isolation: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                              *>Isolation Result: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                           <*Process Property Result: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                     >End Process Function Expression: person
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        >Process Function Expression: roadVehicles
+''                           >Process Property Function Expression: roadVehicles, property owner:Person, inFilter:false
+''                              >Process Variable Expression, name:v_automap
+''                              Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+''                              *>Process Property: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map1) _d#5_f_d,inFilter:false
+                                 (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                 *>Isolation: 
+                                   select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                              <*Process Property Result: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map1) _d#5_f_d,inFilter:false
+                                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                        >End Process Function Expression: roadVehicles
+                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: map_T_MANY__Function_1__V_MANY_
+                    select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''               >End Process Function Expression: subType_Any_m__T_1__T_m_
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:false, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  >Process Function Expression: description
+''                     >Process Property Function Expression: description, property owner:Car, inFilter:false
+''                        >Process Variable Expression, name:v_automap
+''                        Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+''                        *>Process Property: 'description' (map1->) _d#2_f_d,inFilter:false
+                           (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                        <*Process Property Result: 'description' (map1->) _d#2_f_d,inFilter:false
+                                    select "Car_d#5_f_d".c_Description from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: description
+                    select "Car_d#5_f_d".c_Description from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''            >End Process Function Expression: map_T_m__Function_1__V_m_
+              select "Car_d#5_f_d".c_Description from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''            >Process Function Expression: map_T_m__Function_1__V_m_
+''               >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''               >Process Function Expression: subType_Any_m__T_1__T_m_
+''                  >Process Function Expression using supported function: processNoOp_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__RelationalOperationElement_1_
+''                  >Process Function Expression: map_T_MANY__Function_1__V_MANY_
+''                     >Process Function Expression using supported function: processMap_FunctionExpression_1__PropertyMapping_MANY__SelectWithCursor_1__Map_1__State_1__JoinType_1__String_1__List_1__DebugContext_1__Extension_MANY__OperationWithParentPropertyMapping_1_
+''                     >Process Function Expression: person
+''                        >Process Property Function Expression: person, property owner:Holdable, inFilter:false
+''                           >Process Variable Expression, name:p
+''                           Result of Variable Expression, name:p - select * from Holdable as "root"
+''                           *>Process Property: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                              (Q)Source Operation>  select * from Holdable as "root"
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                              *>Isolation: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                              *>Isolation Result: 
+                                select * from Holdable as "root"
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                           <*Process Property Result: 'person' (meta_relational_tests_model_inheritance_Person_Holdable->per1) _d#7,inFilter:false
+                                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                        >>>>> 
+                                        }}}}} 
+                                        $$$$$ 0
+''                     >End Process Function Expression: person
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                     *>Isolation: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                       ? false / State isolation:false, Isolation required (filter or inner joins):false
+''                     *>Isolation Result: 
+                       select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                  >>>>> 
+                                  }}}}} 
+                                  $$$$$ 0
+''                        >Process Function Expression: roadVehicles
+''                           >Process Property Function Expression: roadVehicles, property owner:Person, inFilter:false
+''                              >Process Variable Expression, name:v_automap
+''                              Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+''                              *>Process Property: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map2) _d#5_f_d,inFilter:false
+                                 (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                                 *>Isolation: 
+                                   select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                                   ? false / State isolation:true, Isolation required (filter or inner joins):false
+''                                 *>Isolation Result: 
+                                   select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID))
+                                              >>>>> 
+                                              }}}}} 
+                                              $$$$$ 0
+''                              <*Process Property Result: 'roadVehicles' (meta_relational_tests_model_inheritance_Driver->map2) _d#5_f_d,inFilter:false
+                                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                                           >>>>> 
+                                           }}}}} 
+                                           $$$$$ 0
+''                        >End Process Function Expression: roadVehicles
+                          select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: map_T_MANY__Function_1__V_MANY_
+                    select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''               >End Process Function Expression: subType_Any_m__T_1__T_m_
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''               *>Isolation: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                 ? false / State isolation:false, Isolation required (filter or inner joins):false
+''               *>Isolation Result: 
+                 select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                            >>>>> 
+                            }}}}} 
+                            $$$$$ 0
+''                  >Process Function Expression: description
+''                     >Process Property Function Expression: description, property owner:Bicycle, inFilter:false
+''                        >Process Variable Expression, name:v_automap
+''                        Result of Variable Expression, name:v_automap - select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+''                        *>Process Property: 'description' (map2->) _d#2_f_d,inFilter:false
+                           (Q)Source Operation>  select * from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                        <*Process Property Result: 'description' (map2->) _d#2_f_d,inFilter:false
+                                    select "Bicycle_d#5_f_d".b_Description from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                                     >>>>> 
+                                     }}}}} 
+                                     $$$$$ 0
+''                  >End Process Function Expression: description
+                    select "Bicycle_d#5_f_d".b_Description from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                               >>>>> 
+                               }}}}} 
+                               $$$$$ 0
+''            >End Process Function Expression: map_T_m__Function_1__V_m_
+              select "Bicycle_d#5_f_d".b_Description from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                         >>>>> 
+                         }}}}} 
+                         $$$$$ 0
+''      *>Isolation: 
+        select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge
+           [
+             0 select * from Holdable as "root"
+             0 select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+             0 select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+           ]
+''      *>Isolation: 
+        select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''      *>Isolation: 
+        select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''        ? false / State isolation:true, Isolation required (filter or inner joins):false
+''      *>Isolation Result: 
+        select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge(hasIsolations:false)
+           [
+             0 select * from Holdable as "root"
+             0 select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+             0 select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+           ]
+''           (A): select * from Holdable as "root"
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select "Car_d#5_f_d".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Car as "Car_d#5_f_d" on (equal("Person_d#7".ID, "Car_d#5_f_d".c_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''           (A): select "Car_d#5_f_d_d_m1_r".c_Description as "descC" from Holdable as "root" left outer join Person as "Person_d#7_d_m1" on (equal("Person_d#7_d_m1".ID, "root".ID)) left outer join Car as "Car_d#5_f_d_d_m1_r" on (equal("Person_d#7_d_m1".ID, "Car_d#5_f_d_d_m1_r".c_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+           (Q): select "Bicycle_d#5_f_d".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7" on (equal("Person_d#7".ID, "root".ID)) left outer join Bicycle as "Bicycle_d#5_f_d" on (equal("Person_d#7".ID, "Bicycle_d#5_f_d".b_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''         Merge Result: select "Car_d#5_f_d_d_m1_r".c_Description as "descC", "Bicycle_d#5_f_d_d_m2_md".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7_d_m1" on (equal("Person_d#7_d_m1".ID, "root".ID)) left outer join Car as "Car_d#5_f_d_d_m1_r" on (equal("Person_d#7_d_m1".ID, "Car_d#5_f_d_d_m1_r".c_PersonID)) left outer join Bicycle as "Bicycle_d#5_f_d_d_m2_md" on (equal("Person_d#7_d_m1".ID, "Bicycle_d#5_f_d_d_m2_md".b_PersonID))
+                   >>>>> 
+                   }}}}} 
+                   $$$$$ 0
+''   >End Process Function Expression: project_K_MANY__Function_MANY__String_MANY__TabularDataSet_1_
+     select "Car_d#5_f_d_d_m1_r".c_Description as "descC", "Bicycle_d#5_f_d_d_m2_md".b_Description as "descB" from Holdable as "root" left outer join Person as "Person_d#7_d_m1" on (equal("Person_d#7_d_m1".ID, "root".ID)) left outer join Car as "Car_d#5_f_d_d_m1_r" on (equal("Person_d#7_d_m1".ID, "Car_d#5_f_d_d_m1_r".c_PersonID)) left outer join Bicycle as "Bicycle_d#5_f_d_d_m2_md" on (equal("Person_d#7_d_m1".ID, "Bicycle_d#5_f_d_d_m2_md".b_PersonID))
+                >>>>> 
+                }}}}} 
+                $$$$$ 0
+'[
+   'relational'
+   'H2SqlDialectExtension'
+]
+'Generated SQL Node with query: select "car_0".c_Description as "descC", "bicycle_0".b_Description as "descB" from Holdable as "root" left outer join Person as "person_0" on ("person_0".ID = "root".ID) left outer join Car as "car_0" on ("person_0".ID = "car_0".c_PersonID) left outer join Bicycle as "bicycle_0" on ("person_0".ID = "bicycle_0".b_PersonID)
+''Relational
+(
+  type = TDS[(descC, String, VARCHAR(200), ""), (descB, String, VARCHAR(200), "")]
+  resultColumns = [("descC", VARCHAR(200)), ("descB", VARCHAR(200))]
+  sql = select "car_0".c_Description as "descC", "bicycle_0".b_Description as "descB" from Holdable as "root" left outer join Person as "person_0" on ("person_0".ID = "root".ID) left outer join Car as "car_0" on ("person_0".ID = "car_0".c_PersonID) left outer join Bicycle as "bicycle_0" on ("person_0".ID = "bicycle_0".b_PersonID)
+  connection = TestDatabaseConnection(type = "H2")
+)
+'
